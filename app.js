@@ -141,6 +141,7 @@ let dragNode = null;
 
 // Initialize App
 function init() {
+    window.state = state;
     updateInputUnitBounds();
     setupEventListeners();
     resetDesign();
@@ -668,6 +669,13 @@ function syncInputsToState() {
     }
 
     if (DOM.ductDiameter) state.ductDiameter = toMm(parseFloat(DOM.ductDiameter.value)) || 25;
+
+    // Clamp perpendicular tendon heights to slab thickness
+    if (state.elevationTendonSets) {
+        state.elevationTendonSets.forEach(set => {
+            set.height = Math.max(0, Math.min(state.slabThickness, set.height));
+        });
+    }
 }
 
 // Clamp control points heights to be within allowable cover envelopes
@@ -1791,7 +1799,7 @@ function renderLossChart() {
     }
     
     // Vertical length lines
-    ctx.textAlign = 'middle';
+    ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     let currentX = 0;
     state.spanLengths.forEach((len, idx) => {
@@ -2547,7 +2555,7 @@ function renderSidebarTendonSets() {
                 set.count = state.clipboardTendonSet.count;
                 set.spacing = state.clipboardTendonSet.spacing;
                 set.offset = state.clipboardTendonSet.offset;
-                set.height = state.clipboardTendonSet.height;
+                set.height = Math.max(0, Math.min(state.slabThickness, state.clipboardTendonSet.height));
                 calculateAndRender();
             }
         });
@@ -2670,7 +2678,8 @@ function renderSidebarTendonSets() {
             }
         });
         spInput.addEventListener('change', () => {
-            let val = parseFloat(spInput.value) || 20;
+            let val = parseFloat(spInput.value);
+            if (isNaN(val) || val <= 0) val = 20;
             set.spacing = state.unit === 'cm' ? val / 100 : val / 1000;
             spInput.value = val.toFixed(state.unit === 'cm' ? 1 : 0);
             calculateAndRender();
@@ -2709,7 +2718,8 @@ function renderSidebarTendonSets() {
             }
         });
         offInput.addEventListener('change', () => {
-            let val = parseFloat(offInput.value) || 20;
+            let val = parseFloat(offInput.value);
+            if (isNaN(val) || val < 0) val = 0;
             set.offset = state.unit === 'cm' ? val / 100 : val / 1000;
             offInput.value = val.toFixed(state.unit === 'cm' ? 1 : 0);
             calculateAndRender();
@@ -2742,7 +2752,8 @@ function renderSidebarTendonSets() {
             }
         });
         hgInput.addEventListener('change', () => {
-            let val = parseFloat(hgInput.value) || fromMm(state.slabThickness - state.coverTop - 15);
+            let val = parseFloat(hgInput.value);
+            if (isNaN(val)) val = fromMm(state.slabThickness - state.coverTop - 15);
             const minH = 0;
             const maxH = fromMm(state.slabThickness);
             val = Math.max(minH, Math.min(maxH, val));
