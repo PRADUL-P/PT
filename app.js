@@ -112,6 +112,15 @@ const DOM = {
     inputLoadJson: document.getElementById('input-load-json'),
     btnExportCsv: document.getElementById('btn-export-csv'),
     btnExportSvg: document.getElementById('btn-export-svg'),
+    btnExportAutocad: document.getElementById('btn-export-autocad'),
+    autocadModal: document.getElementById('autocad-modal'),
+    btnCloseModal: document.getElementById('btn-close-modal'),
+    btnCancelExport: document.getElementById('btn-cancel-export'),
+    btnConfirmExport: document.getElementById('btn-confirm-export'),
+    btnCopyCadCoords: document.getElementById('btn-copy-cad-coords'),
+    btnCopyLispData: document.getElementById('btn-copy-lisp-data'),
+    lnkDownloadLsp: document.getElementById('lnk-download-lsp'),
+    cadCommandHelp: document.getElementById('cad-command-help'),
     tooltip: document.getElementById('canvas-tooltip'),
     
     // Tab selectors
@@ -3002,6 +3011,136 @@ function setupEventListeners() {
     // Export SVG
     DOM.btnExportSvg.addEventListener('click', exportSVG);
 
+    // AutoCAD Export Modal triggers
+    if (DOM.btnExportAutocad && DOM.autocadModal) {
+        const formatSelect = document.getElementById('cad-file-format');
+        const viewSelect = document.getElementById('cad-export-type');
+
+        const updateCopyButtonVisibility = () => {
+            if (!formatSelect) return;
+            const format = formatSelect.value;
+            const viewType = viewSelect ? viewSelect.value : 'elevation';
+
+            if (format === 'tfd' || format === 'lsp') {
+                if (DOM.btnCopyCadCoords) DOM.btnCopyCadCoords.classList.add('hidden');
+                if (DOM.btnCopyLispData) DOM.btnCopyLispData.classList.remove('hidden');
+            } else {
+                if (DOM.btnCopyCadCoords) DOM.btnCopyCadCoords.classList.remove('hidden');
+                if (DOM.btnCopyLispData) DOM.btnCopyLispData.classList.add('hidden');
+            }
+
+            if (DOM.cadCommandHelp) {
+                let helpText = '';
+                if (format === 'dxf') {
+                    helpText = `<strong>Native DXF format</strong>: Open the downloaded <code>.dxf</code> file directly in AutoCAD using the <strong><code>OPEN</code></strong> command. Drawing elements, layers, and scaling are configured automatically.`;
+                } else if (format === 'scr') {
+                    helpText = `<strong>AutoCAD Script</strong>: Run the downloaded <code>.scr</code> file in AutoCAD by typing <strong><code>SCRIPT</code></strong> in the command line and selecting the file. Ensure you are in a clean drawing and dynamic input is turned off.`;
+                } else if (format === 'lsp') {
+                    helpText = `<strong>LISP Loader Script</strong>: Load the downloaded loader file in AutoCAD once (using <strong><code>APPLOAD</code></strong> or drag-and-drop). This defines the commands:
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 0.75rem; color: #cbd5e1; border: 1px solid rgba(255,255,255,0.1);">
+                      <thead>
+                        <tr style="background: rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left;">
+                          <th style="padding: 6px; font-weight: 600;">Command</th>
+                          <th style="padding: 6px; font-weight: 600;">Drawing View</th>
+                          <th style="padding: 6px; font-weight: 600;">Input Source</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                          <td style="padding: 6px; font-family: monospace; color: #60a5fa; font-weight: 600;">DRAWELEVC</td>
+                          <td style="padding: 6px;">Elevation Profile</td>
+                          <td style="padding: 6px;">Clipboard data</td>
+                        </tr>
+                        <tr style="background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.05);">
+                          <td style="padding: 6px; font-family: monospace; color: #60a5fa; font-weight: 600;">DRAWELEVF</td>
+                          <td style="padding: 6px;">Elevation Profile</td>
+                          <td style="padding: 6px;">Data File (.tfd)</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                          <td style="padding: 6px; font-family: monospace; color: #60a5fa; font-weight: 600;">DRAWPLANC</td>
+                          <td style="padding: 6px;">2D Plan Layout</td>
+                          <td style="padding: 6px;">Clipboard data</td>
+                        </tr>
+                        <tr style="background: rgba(255,255,255,0.02);">
+                          <td style="padding: 6px; font-family: monospace; color: #60a5fa; font-weight: 600;">DRAWPLANF</td>
+                          <td style="padding: 6px;">2D Plan Layout</td>
+                          <td style="padding: 6px;">Data File (.tfd)</td>
+                        </tr>
+                      </tbody>
+                    </table>`;
+                } else if (format === 'tfd') {
+                    const activeCmd = viewType === 'elevation' ? 'DRAWELEVF' : 'DRAWPLANF';
+                    const activeClipCmd = viewType === 'elevation' ? 'DRAWELEVC' : 'DRAWPLANC';
+                    helpText = `<strong>TFD Data File (${viewType === 'elevation' ? 'Elevation' : 'Plan'} View)</strong>:<br>
+                    1. <strong>Clipboard Workflow</strong>: Click <strong>Copy LISP Data</strong>, paste (<code>Ctrl+V</code>) in the AutoCAD command prompt, then run <strong><code>${activeClipCmd}</code></strong>.<br>
+                    2. <strong>File Workflow</strong>: Click <strong>Download File</strong>, run <strong><code>${activeCmd}</code></strong> in AutoCAD, and select the downloaded file.<br>
+                    <span style="font-size: 0.75rem; color: #94a3b8; display: block; margin-top: 6px;">Note: Make sure the LISP Loader (<code>TendonFlowDraw.lsp</code>) is loaded in AutoCAD first using the <code>APPLOAD</code> command.</span>`;
+                }
+                DOM.cadCommandHelp.innerHTML = helpText;
+            }
+        };
+
+        DOM.btnExportAutocad.addEventListener('click', () => {
+            DOM.autocadModal.classList.remove('hidden');
+            updateCopyButtonVisibility();
+        });
+
+        DOM.btnCloseModal.addEventListener('click', () => {
+            DOM.autocadModal.classList.add('hidden');
+        });
+
+        DOM.btnCancelExport.addEventListener('click', () => {
+            DOM.autocadModal.classList.add('hidden');
+        });
+
+        DOM.autocadModal.addEventListener('click', (e) => {
+            if (e.target === DOM.autocadModal) {
+                DOM.autocadModal.classList.add('hidden');
+            }
+        });
+
+        DOM.btnConfirmExport.addEventListener('click', () => {
+            const format = formatSelect ? formatSelect.value : 'dxf';
+            if (format === 'dxf') {
+                exportDXF();
+            } else if (format === 'lsp') {
+                exportLISP();
+            } else if (format === 'tfd') {
+                exportTFD();
+            } else {
+                exportAutoCADScript();
+            }
+            DOM.autocadModal.classList.add('hidden');
+        });
+
+        if (DOM.btnCopyCadCoords) {
+            DOM.btnCopyCadCoords.addEventListener('click', () => {
+                copyCADCoordinatesToClipboard();
+            });
+        }
+
+        if (DOM.btnCopyLispData) {
+            DOM.btnCopyLispData.addEventListener('click', () => {
+                copyLispDataToClipboard();
+            });
+        }
+
+        if (DOM.lnkDownloadLsp) {
+            DOM.lnkDownloadLsp.addEventListener('click', (e) => {
+                e.preventDefault();
+                exportLISP();
+            });
+        }
+
+        if (formatSelect) {
+            formatSelect.addEventListener('change', updateCopyButtonVisibility);
+        }
+        if (viewSelect) {
+            viewSelect.addEventListener('change', updateCopyButtonVisibility);
+        }
+        updateCopyButtonVisibility();
+    }
+
     // Save/Load JSON configurations
     DOM.btnSaveJson.addEventListener('click', exportJSON);
     DOM.btnLoadJson.addEventListener('click', () => DOM.inputLoadJson.click());
@@ -3142,6 +3281,1128 @@ function exportSVG() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+}
+
+// AutoCAD Script (.SCR) Export
+function exportAutoCADScript() {
+    const viewType = document.getElementById('cad-export-type').value;
+    const cadUnit = document.getElementById('cad-unit').value;
+    const vExag = parseFloat(document.getElementById('cad-exag').value);
+    const drawMethod = document.getElementById('cad-draw-method').value;
+    const includeText = document.getElementById('cad-include-text').checked;
+
+    let scale = 1000; // millimeters
+    if (cadUnit === 'cm') scale = 100;
+    if (cadUnit === 'm') scale = 1;
+
+    let scrContent = '';
+
+    // Standard variable configuration using SETVAR
+    scrContent += `SETVAR CMDECHO 0\n`;
+    scrContent += `SETVAR OSMODE 0\n`;
+
+    // Unified Layer Creation Command
+    let layersCmd = "_-LAYER\n";
+    layersCmd += "M\nTF_Slab\nC\n8\nTF_Slab\n";
+    layersCmd += "M\nTF_Tendon\nC\n4\nTF_Tendon\n";
+    if (viewType === 'elevation') {
+        layersCmd += "M\nTF_Duct\nC\n141\nTF_Duct\n";
+        layersCmd += "M\nTF_Limits\nC\n1\nTF_Limits\n";
+        layersCmd += "M\nTF_Tendon_Perp\nC\n3\nTF_Tendon_Perp\n"; // 3 = Green for perpendicular tendons
+    }
+    layersCmd += "M\nTF_Columns\nC\n9\nTF_Columns\n";
+    layersCmd += "M\nTF_Text\nC\n2\nTF_Text\n\n"; // Exit layer command
+    scrContent += layersCmd;
+
+    if (viewType === 'elevation') {
+        scrContent += generateElevationScript(scale, vExag, drawMethod, includeText);
+    } else {
+        scrContent += generatePlanScript(scale, includeText);
+    }
+
+    // Restore environment
+    scrContent += `SETVAR CMDECHO 1\n`;
+    scrContent += `SETVAR OSMODE 16383\n`;
+    scrContent += `_ZOOM\n_E\n`;
+
+    const blob = new Blob([scrContent], { type: 'text/plain;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `tendonflow_pt_${viewType}_${cadUnit}.scr`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function generateElevationScript(scale, vExag, drawMethod, includeText) {
+    let scr = '';
+    const totalLength = state.spanLengths.reduce((a, b) => a + b, 0);
+    const hSlab = state.slabThickness; 
+    
+    const L_cad = totalLength * scale;
+    const h_cad = (hSlab / 1000) * scale * vExag;
+
+    // Slab outline
+    scr += `CLAYER\nTF_Slab\n`;
+    scr += `_LINE\n0,0\n${L_cad},0\n\n`;
+    scr += `_LINE\n0,${h_cad}\n${L_cad},${h_cad}\n\n`;
+    scr += `_LINE\n0,0\n0,${h_cad}\n\n`;
+    scr += `_LINE\n${L_cad},0\n${L_cad},${h_cad}\n\n`;
+    
+    // Neutral axis
+    const na_y_cad = (hSlab / 2 / 1000) * scale * vExag;
+    scr += `_LINE\n0,${na_y_cad}\n${L_cad},${na_y_cad}\n\n`;
+
+    // Columns
+    scr += `CLAYER\nTF_Columns\n`;
+    let currentX = 0;
+    const colWidth = 0.4 * scale;
+    const colHeight = 1.5 * scale;
+
+    for (let i = 0; i <= state.numSpans; i++) {
+        if (i > 0) currentX += state.spanLengths[i - 1];
+        const x_cad = currentX * scale;
+        scr += `_LINE\n${x_cad - colWidth/2},${-colHeight}\n${x_cad - colWidth/2},0\n\n`;
+        scr += `_LINE\n${x_cad + colWidth/2},${-colHeight}\n${x_cad + colWidth/2},0\n\n`;
+        scr += `_LINE\n${x_cad - colWidth/2},${-colHeight}\n${x_cad + colWidth/2},${-colHeight}\n\n`;
+    }
+
+    // Cover Limits
+    scr += `CLAYER\nTF_Limits\n`;
+    const coverTop_cad = (state.coverTop / 1000) * scale * vExag;
+    const coverBottom_cad = (state.coverBottom / 1000) * scale * vExag;
+    scr += `_LINE\n0,${h_cad - coverTop_cad}\n${L_cad},${h_cad - coverTop_cad}\n\n`;
+    scr += `_LINE\n0,${coverBottom_cad}\n${L_cad},${coverBottom_cad}\n\n`;
+
+    // Tendon curve
+    scr += `CLAYER\nTF_Tendon\n`;
+    const points = state.sampledPoints;
+    if (points && points.length > 0) {
+        if (drawMethod === 'spline') {
+            scr += `_SPLINE\n`;
+            points.forEach(pt => {
+                const x_cad = pt.xGlobal * scale;
+                const y_cad = (pt.y / 1000) * scale * vExag;
+                scr += `${x_cad.toFixed(4)},${y_cad.toFixed(4)}\n`;
+            });
+            scr += `\n\n\n`; // End spline
+        } else {
+            scr += `_PLINE\n`;
+            points.forEach(pt => {
+                const x_cad = pt.xGlobal * scale;
+                const y_cad = (pt.y / 1000) * scale * vExag;
+                scr += `${x_cad.toFixed(4)},${y_cad.toFixed(4)}\n`;
+            });
+            scr += `\n`; // End pline
+        }
+        
+        // Duct Envelope (Matches drawMethod: spline vs pline)
+        scr += `CLAYER\nTF_Duct\n`;
+        if (drawMethod === 'spline') {
+            scr += `_SPLINE\n`;
+            points.forEach(pt => {
+                const x_cad = pt.xGlobal * scale;
+                const y_top_cad = ((pt.y + state.ductDiameter / 2) / 1000) * scale * vExag;
+                scr += `${x_cad.toFixed(4)},${y_top_cad.toFixed(4)}\n`;
+            });
+            scr += `\n\n\n`;
+
+            scr += `_SPLINE\n`;
+            points.forEach(pt => {
+                const x_cad = pt.xGlobal * scale;
+                const y_bot_cad = ((pt.y - state.ductDiameter / 2) / 1000) * scale * vExag;
+                scr += `${x_cad.toFixed(4)},${y_bot_cad.toFixed(4)}\n`;
+            });
+            scr += `\n\n\n`;
+        } else {
+            scr += `_PLINE\n`;
+            points.forEach(pt => {
+                const x_cad = pt.xGlobal * scale;
+                const y_top_cad = ((pt.y + state.ductDiameter / 2) / 1000) * scale * vExag;
+                scr += `${x_cad.toFixed(4)},${y_top_cad.toFixed(4)}\n`;
+            });
+            scr += `\n`;
+
+            scr += `_PLINE\n`;
+            points.forEach(pt => {
+                const x_cad = pt.xGlobal * scale;
+                const y_bot_cad = ((pt.y - state.ductDiameter / 2) / 1000) * scale * vExag;
+                scr += `${x_cad.toFixed(4)},${y_bot_cad.toFixed(4)}\n`;
+            });
+            scr += `\n`;
+        }
+    }
+
+    // Perpendicular Tendon Cross-Sections (Circles/Ellipses)
+    const activePerpTendons = getActivePerpendicularTendons();
+    if (activePerpTendons && activePerpTendons.length > 0) {
+        scr += `CLAYER\nTF_Tendon_Perp\n`;
+        activePerpTendons.forEach(pt => {
+            const cx = pt.x * scale;
+            const cy = (pt.y / 1000) * scale * vExag;
+            const rx = (state.ductDiameter / 2) / 1000 * scale;
+            const ry = rx * vExag;
+
+            if (vExag === 1) {
+                // Circular cross section at true scale
+                scr += `_CIRCLE\n${cx.toFixed(4)},${cy.toFixed(4)}\n${rx.toFixed(4)}\n`;
+            } else {
+                // Elliptical cross section to account for vertical exaggeration stretch
+                scr += `_ELLIPSE\n_C\n${cx.toFixed(4)},${cy.toFixed(4)}\n${(cx + rx).toFixed(4)},${cy.toFixed(4)}\n${ry.toFixed(4)}\n`;
+            }
+        });
+    }
+
+    // Annotations (underscores/no spaces to prevent command interrupts)
+    if (includeText) {
+        scr += `CLAYER\nTF_Text\n`;
+        const textHeight = (hSlab / 1000) * scale * 0.15;
+
+        let runX = 0;
+        for (let i = 0; i <= state.numSpans; i++) {
+            if (i > 0) runX += state.spanLengths[i - 1];
+            const x_cad = runX * scale;
+            const y_val_mm = state.controlPoints.supports[i];
+            const y_cad = (y_val_mm / 1000) * scale * vExag;
+            
+            const valStr = state.unit === 'cm' ? (y_val_mm / 10).toFixed(1) : y_val_mm.toFixed(0);
+
+            scr += `_TEXT\n`;
+            scr += `J\nC\n`;
+            scr += `${x_cad.toFixed(2)},${(y_cad + textHeight * 1.5).toFixed(2)}\n`;
+            scr += `${textHeight.toFixed(2)}\n`;
+            scr += `0\n`;
+            scr += `Peak:${valStr}${state.unit}\n`;
+        }
+
+        let spanStartX = 0;
+        for (let i = 0; i < state.numSpans; i++) {
+            const spanLen = state.spanLengths[i];
+            const lp = state.controlPoints.lowPoints[i];
+            const x_cad = (spanStartX + lp.xFract * spanLen) * scale;
+            const y_val_mm = lp.y;
+            const y_cad = (y_val_mm / 1000) * scale * vExag;
+
+            const valStr = state.unit === 'cm' ? (y_val_mm / 10).toFixed(1) : y_val_mm.toFixed(0);
+
+            scr += `_TEXT\n`;
+            scr += `J\nC\n`;
+            scr += `${x_cad.toFixed(2)},${(y_cad - textHeight * 2.2).toFixed(2)}\n`;
+            scr += `${textHeight.toFixed(2)}\n`;
+            scr += `0\n`;
+            scr += `Low:${valStr}${state.unit}\n`;
+
+            spanStartX += spanLen;
+        }
+
+        const infoX = 0;
+        const infoY = h_cad + textHeight * 4.0;
+        
+        scr += `_TEXT\n${infoX},${infoY}\n${textHeight * 1.3}\n0\nPOST-TENSIONED_TENDON_PROFILE\n`;
+        scr += `_TEXT\n${infoX},${infoY - textHeight * 1.8}\n${textHeight}\n0\nSlab_Thickness:${fromMm(state.slabThickness).toFixed(1)}${state.unit}_Spans:${state.numSpans}\n`;
+    }
+
+    return scr;
+}
+
+function generatePlanScript(scale, includeText) {
+    let scr = '';
+    const totalLength = state.spanLengths.reduce((a, b) => a + b, 0);
+    const totalWidth = state.slabWidth;
+
+    const L_cad = totalLength * scale;
+    const W_cad = totalWidth * scale;
+
+    scr += `CLAYER\nTF_Slab\n`;
+    scr += `_RECTANG\n0,0\n${L_cad},${W_cad}\n`;
+
+    scr += `CLAYER\nTF_Columns\n`;
+    const colSize = 0.4 * scale;
+
+    if (state.planColumns) {
+        state.planColumns.forEach(c => {
+            if (c.enabled) {
+                const cx = c.x * scale;
+                const cy = c.y * scale;
+                scr += `_RECTANG\n${cx - colSize/2},${cy - colSize/2}\n${cx + colSize/2},${cy + colSize/2}\n`;
+            }
+        });
+    }
+
+    scr += `CLAYER\nTF_Tendon\n`;
+    if (state.planXTendons) {
+        state.planXTendons.forEach(y => {
+            if (y >= 0 && y <= totalWidth) {
+                const y_cad = y * scale;
+                scr += `_LINE\n0,${y_cad}\n${L_cad},${y_cad}\n\n`;
+            }
+        });
+    }
+
+    const activePerpTendons = getActivePerpendicularTendons();
+    if (activePerpTendons) {
+        activePerpTendons.forEach(pt => {
+            const x_cad = pt.x * scale;
+            scr += `_LINE\n${x_cad},0\n${x_cad},${W_cad}\n\n`;
+        });
+    }
+
+    if (includeText) {
+        scr += `CLAYER\nTF_Text\n`;
+        const textHeight = 0.2 * scale; 
+
+        scr += `_TEXT\n0,${W_cad + textHeight * 2}\n${textHeight * 1.5}\n0\nPOST-TENSIONED_SLAB_2D_PLAN_LAYOUT\n`;
+        scr += `_TEXT\nJ\nC\n${L_cad / 2},${-textHeight * 2}\n${textHeight}\n0\nSLAB_LENGTH:${totalLength.toFixed(1)}m\n`;
+        scr += `_TEXT\nJ\nC\n${-textHeight * 2},${W_cad / 2}\n${textHeight}\n90\nSLAB_WIDTH:${totalWidth.toFixed(1)}m\n`;
+    }
+
+    return scr;
+}
+
+// Copy coordinates list to clipboard for PLINE/SPLINE pasting
+function copyCADCoordinatesToClipboard() {
+    const cadUnit = document.getElementById('cad-unit').value;
+    const vExag = parseFloat(document.getElementById('cad-exag').value);
+    
+    let scale = 1000;
+    if (cadUnit === 'cm') scale = 100;
+    if (cadUnit === 'm') scale = 1;
+
+    const points = state.sampledPoints;
+    if (!points || points.length === 0) return;
+
+    let coordsStr = '';
+    points.forEach((pt, idx) => {
+        const x_cad = pt.xGlobal * scale;
+        const y_cad = (pt.y / 1000) * scale * vExag;
+        
+        // Use # prefix for absolute coordinates (crucial when Dynamic Input F12 is ON in AutoCAD)
+        if (idx === 0) {
+            // First point doesn't strictly need it, but we put it anyway
+            coordsStr += `#${x_cad.toFixed(3)},${y_cad.toFixed(3)}\n`;
+        } else {
+            coordsStr += `#${x_cad.toFixed(3)},${y_cad.toFixed(3)}\n`;
+        }
+    });
+
+    navigator.clipboard.writeText(coordsStr).then(() => {
+        const btn = document.getElementById('btn-copy-cad-coords');
+        if (btn) {
+            const origHTML = btn.innerHTML;
+            btn.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Copied!`;
+            setTimeout(() => {
+                btn.innerHTML = origHTML;
+            }, 2000);
+        }
+    }).catch(err => {
+        console.error('Failed to copy coordinates: ', err);
+        alert('Failed to copy coordinates automatically. Please inspect developer console.');
+    });
+}
+
+function copyLispDataToClipboard() {
+    const viewType = document.getElementById('cad-export-type').value;
+    const cadUnit = document.getElementById('cad-unit').value;
+    const vExag = parseFloat(document.getElementById('cad-exag').value);
+    const includeText = document.getElementById('cad-include-text').checked;
+
+    let scale = 1000;
+    if (cadUnit === 'cm') scale = 100;
+    if (cadUnit === 'm') scale = 1;
+
+    let content = '';
+    if (viewType === 'elevation') {
+        content = generateElevationTFD(scale, vExag, includeText);
+    } else {
+        content = generatePlanTFD(scale, includeText);
+    }
+
+    const varName = viewType === 'elevation' ? '*tfd-elev-data*' : '*tfd-plan-data*';
+    const lispExpression = `(setq ${varName} '${content})`;
+
+    navigator.clipboard.writeText(lispExpression).then(() => {
+        const btn = DOM.btnCopyLispData;
+        if (btn) {
+            const origHTML = btn.innerHTML;
+            btn.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Copied!`;
+            setTimeout(() => {
+                btn.innerHTML = origHTML;
+            }, 2000);
+        }
+    }).catch(err => {
+        console.error('Failed to copy LISP data: ', err);
+        alert('Failed to copy LISP data automatically. Please inspect developer console.');
+    });
+}
+
+// AutoCAD DXF File Export
+function exportDXF() {
+    const viewType = document.getElementById('cad-export-type').value;
+    const cadUnit = document.getElementById('cad-unit').value;
+    const vExag = parseFloat(document.getElementById('cad-exag').value);
+    const includeText = document.getElementById('cad-include-text').checked;
+
+    let scale = 1000; // millimeters
+    if (cadUnit === 'cm') scale = 100;
+    if (cadUnit === 'm') scale = 1;
+
+    const f = (code, val) => `${code}\n${val}\n`;
+
+    let dxf = '';
+
+    // HEADER SECTION specifying DXF R12 (AC1009)
+    dxf += f(0, 'SECTION') + f(2, 'HEADER') + f(9, '$ACADVER') + f(1, 'AC1009') + f(0, 'ENDSEC');
+
+    // Define layers
+    const layers = [
+        { name: '0', color: 7 },
+        { name: 'TF_Slab', color: 8 },
+        { name: 'TF_Tendon', color: 4 },
+        { name: 'TF_Columns', color: 9 },
+        { name: 'TF_Text', color: 2 }
+    ];
+    if (viewType === 'elevation') {
+        layers.push({ name: 'TF_Duct', color: 141 });
+        layers.push({ name: 'TF_Limits', color: 1 });
+        layers.push({ name: 'TF_Tendon_Perp', color: 3 });
+    }
+
+    // TABLES SECTION
+    dxf += f(0, 'SECTION') + f(2, 'TABLES');
+    
+    // LTYPE TABLE (Required to map CONTINUOUS linetype in standard R12)
+    dxf += f(0, 'TABLE') + f(2, 'LTYPE') + f(70, 1);
+    dxf += f(0, 'LTYPE') + f(2, 'CONTINUOUS') + f(70, 0) + f(3, 'Solid line') + f(72, 65) + f(73, 0) + f(40, 0.0);
+    dxf += f(0, 'ENDTAB');
+
+    // LAYER TABLE
+    dxf += f(0, 'TABLE') + f(2, 'LAYER') + f(70, layers.length);
+    layers.forEach(layer => {
+        dxf += f(0, 'LAYER') + f(2, layer.name) + f(70, 0) + f(62, layer.color) + f(6, 'CONTINUOUS');
+    });
+    dxf += f(0, 'ENDTAB');
+    
+    dxf += f(0, 'ENDSEC');
+
+    // ENTITIES SECTION
+    dxf += f(0, 'SECTION') + f(2, 'ENTITIES');
+
+    if (viewType === 'elevation') {
+        dxf += generateElevationDXF(scale, vExag, includeText);
+    } else {
+        dxf += generatePlanDXF(scale, includeText);
+    }
+
+    dxf += f(0, 'ENDSEC') + f(0, 'EOF');
+
+    // Force CRLF line endings for strict AutoCAD parser compatibility on Windows
+    dxf = dxf.replace(/\r?\n/g, '\r\n');
+
+    // Trigger download
+    const blob = new Blob([dxf], { type: 'application/dxf;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `tendonflow_pt_${viewType}_${cadUnit}.dxf`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function generateElevationDXF(scale, vExag, includeText) {
+    let str = '';
+    const totalLength = state.spanLengths.reduce((a, b) => a + b, 0);
+    const hSlab = state.slabThickness; 
+    
+    const L_cad = totalLength * scale;
+    const h_cad = (hSlab / 1000) * scale * vExag;
+
+    // Spacing-free DXF format helpers
+    const f = (code, val) => `${code}\n${val}\n`;
+    
+    const dxfLine = (x1, y1, x2, y2, layer) => {
+        return f(0, 'LINE') + f(8, layer) +
+               f(10, x1.toFixed(3)) + f(20, y1.toFixed(3)) + f(30, '0.0') +
+               f(11, x2.toFixed(3)) + f(21, y2.toFixed(3)) + f(31, '0.0');
+    };
+    
+    // Standard POLYLINE-VERTEX-SEQEND for DXF R12 compatibility (no LWPOLYLINE support)
+    const dxfPolyline = (points, layer, closed = false) => {
+        let s = f(0, 'POLYLINE') + f(8, layer) + f(66, 1) + f(70, closed ? 1 : 0);
+        points.forEach(pt => {
+            s += f(0, 'VERTEX') + f(8, layer) + f(10, pt.x.toFixed(3)) + f(20, pt.y.toFixed(3)) + f(30, '0.0');
+        });
+        s += f(0, 'SEQEND') + f(8, layer);
+        return s;
+    };
+    
+    const dxfCircle = (cx, cy, r, layer) => {
+        return f(0, 'CIRCLE') + f(8, layer) +
+               f(10, cx.toFixed(3)) + f(20, cy.toFixed(3)) + f(30, '0.0') +
+               f(40, r.toFixed(3));
+    };
+    
+    // Segmented polyline ellipse for DXF R12 compatibility (no native ELLIPSE entity in R12)
+    const dxfEllipse = (cx, cy, rx, ry, layer) => {
+        const points = [];
+        const segments = 32;
+        for (let i = 0; i < segments; i++) {
+            const theta = (i / segments) * 2 * Math.PI;
+            points.push({
+                x: cx + rx * Math.cos(theta),
+                y: cy + ry * Math.sin(theta)
+            });
+        }
+        return dxfPolyline(points, layer, true);
+    };
+    
+    const dxfText = (x, y, height, textVal, layer, angle = 0, justifyCenter = false) => {
+        let s = f(0, 'TEXT') + f(8, layer) +
+                f(10, x.toFixed(3)) + f(20, y.toFixed(3)) + f(30, '0.0') +
+                f(40, height.toFixed(3)) + f(1, textVal) + f(50, angle.toFixed(1));
+        if (justifyCenter) {
+            s += f(72, 1) + f(11, x.toFixed(3)) + f(21, y.toFixed(3)) + f(31, '0.0');
+        }
+        return s;
+    };
+
+    // Slab outline
+    str += dxfLine(0, 0, L_cad, 0, 'TF_Slab');
+    str += dxfLine(0, h_cad, L_cad, h_cad, 'TF_Slab');
+    str += dxfLine(0, 0, 0, h_cad, 'TF_Slab');
+    str += dxfLine(L_cad, 0, L_cad, h_cad, 'TF_Slab');
+    
+    // Neutral axis
+    const na_y_cad = (hSlab / 2 / 1000) * scale * vExag;
+    str += dxfLine(0, na_y_cad, L_cad, na_y_cad, 'TF_Slab');
+
+    // Columns
+    let currentX = 0;
+    const colWidth = 0.4 * scale;
+    const colHeight = 1.5 * scale;
+    for (let i = 0; i <= state.numSpans; i++) {
+        if (i > 0) currentX += state.spanLengths[i - 1];
+        const x_cad = currentX * scale;
+        str += dxfLine(x_cad - colWidth/2, -colHeight, x_cad - colWidth/2, 0, 'TF_Columns');
+        str += dxfLine(x_cad + colWidth/2, -colHeight, x_cad + colWidth/2, 0, 'TF_Columns');
+        str += dxfLine(x_cad - colWidth/2, -colHeight, x_cad + colWidth/2, -colHeight, 'TF_Columns');
+    }
+
+    // Cover Limits
+    const coverTop_cad = (state.coverTop / 1000) * scale * vExag;
+    const coverBottom_cad = (state.coverBottom / 1000) * scale * vExag;
+    str += dxfLine(0, h_cad - coverTop_cad, L_cad, h_cad - coverTop_cad, 'TF_Limits');
+    str += dxfLine(0, coverBottom_cad, L_cad, coverBottom_cad, 'TF_Limits');
+
+    // Tendon curve
+    const points = state.sampledPoints;
+    if (points && points.length > 0) {
+        const tendonPts = points.map(pt => ({
+            x: pt.xGlobal * scale,
+            y: (pt.y / 1000) * scale * vExag
+        }));
+        str += dxfPolyline(tendonPts, 'TF_Tendon');
+        
+        // Duct envelopes
+        const ductTopPts = points.map(pt => ({
+            x: pt.xGlobal * scale,
+            y: ((pt.y + state.ductDiameter / 2) / 1000) * scale * vExag
+        }));
+        str += dxfPolyline(ductTopPts, 'TF_Duct');
+
+        const ductBotPts = points.map(pt => ({
+            x: pt.xGlobal * scale,
+            y: ((pt.y - state.ductDiameter / 2) / 1000) * scale * vExag
+        }));
+        str += dxfPolyline(ductBotPts, 'TF_Duct');
+    }
+
+    // Perpendicular tendons
+    const activePerpTendons = getActivePerpendicularTendons();
+    if (activePerpTendons && activePerpTendons.length > 0) {
+        activePerpTendons.forEach(pt => {
+            const cx = pt.x * scale;
+            const cy = (pt.y / 1000) * scale * vExag;
+            const rx = (state.ductDiameter / 2) / 1000 * scale;
+            const ry = rx * vExag;
+
+            if (vExag === 1) {
+                str += dxfCircle(cx, cy, rx, 'TF_Tendon_Perp');
+            } else {
+                str += dxfEllipse(cx, cy, rx, ry, 'TF_Tendon_Perp');
+            }
+        });
+    }
+
+    // Annotations
+    if (includeText) {
+        const textHeight = (hSlab / 1000) * scale * 0.15;
+
+        // Support peaks
+        let runX = 0;
+        for (let i = 0; i <= state.numSpans; i++) {
+            if (i > 0) runX += state.spanLengths[i - 1];
+            const x_cad = runX * scale;
+            const y_val_mm = state.controlPoints.supports[i];
+            const y_cad = (y_val_mm / 1000) * scale * vExag;
+            const valStr = state.unit === 'cm' ? (y_val_mm / 10).toFixed(1) : y_val_mm.toFixed(0);
+            
+            str += dxfText(x_cad, y_cad + textHeight * 1.5, textHeight, `Peak: ${valStr} ${state.unit}`, 'TF_Text', 0, true);
+        }
+
+        // Low points
+        let spanStartX = 0;
+        for (let i = 0; i < state.numSpans; i++) {
+            const spanLen = state.spanLengths[i];
+            const lp = state.controlPoints.lowPoints[i];
+            const x_cad = (spanStartX + lp.xFract * spanLen) * scale;
+            const y_val_mm = lp.y;
+            const y_cad = (y_val_mm / 1000) * scale * vExag;
+            const valStr = state.unit === 'cm' ? (y_val_mm / 10).toFixed(1) : y_val_mm.toFixed(0);
+
+            str += dxfText(x_cad, y_cad - textHeight * 2.2, textHeight, `Low: ${valStr} ${state.unit}`, 'TF_Text', 0, true);
+            spanStartX += spanLen;
+        }
+
+        // Title box
+        const infoX = 0;
+        const infoY = h_cad + textHeight * 4.0;
+        str += dxfText(infoX, infoY, textHeight * 1.5, "POST-TENSIONED TENDON ELEVATION PROFILE", 'TF_Text');
+        str += dxfText(infoX, infoY - textHeight * 2, textHeight, `Slab Thickness: ${fromMm(state.slabThickness).toFixed(1)} ${state.unit} | Spans: ${state.numSpans} | Exaggeration: ${vExag}x`, 'TF_Text');
+        str += dxfText(infoX, infoY - textHeight * 3.5, textHeight, `Force X: ${state.tendonForce} kN | Spacing X: ${state.tendonSpacingX} m | Duct OD: ${fromMm(state.ductDiameter).toFixed(1)} ${state.unit}`, 'TF_Text');
+    }
+
+    return str;
+}
+
+function generatePlanDXF(scale, includeText) {
+    let str = '';
+    const totalLength = state.spanLengths.reduce((a, b) => a + b, 0);
+    const totalWidth = state.slabWidth;
+
+    const L_cad = totalLength * scale;
+    const W_cad = totalWidth * scale;
+
+    // Spacing-free DXF format helpers
+    const f = (code, val) => `${code}\n${val}\n`;
+    
+    const dxfLine = (x1, y1, x2, y2, layer) => {
+        return f(0, 'LINE') + f(8, layer) +
+               f(10, x1.toFixed(3)) + f(20, y1.toFixed(3)) + f(30, '0.0') +
+               f(11, x2.toFixed(3)) + f(21, y2.toFixed(3)) + f(31, '0.0');
+    };
+    
+    // Standard POLYLINE-VERTEX-SEQEND for DXF R12 compatibility (no LWPOLYLINE support)
+    const dxfPolyline = (points, layer, closed = false) => {
+        let s = f(0, 'POLYLINE') + f(8, layer) + f(66, 1) + f(70, closed ? 1 : 0);
+        points.forEach(pt => {
+            s += f(0, 'VERTEX') + f(8, layer) + f(10, pt.x.toFixed(3)) + f(20, pt.y.toFixed(3)) + f(30, '0.0');
+        });
+        s += f(0, 'SEQEND') + f(8, layer);
+        return s;
+    };
+    
+    const dxfText = (x, y, height, textVal, layer, angle = 0, justifyCenter = false) => {
+        let s = f(0, 'TEXT') + f(8, layer) +
+                f(10, x.toFixed(3)) + f(20, y.toFixed(3)) + f(30, '0.0') +
+                f(40, height.toFixed(3)) + f(1, textVal) + f(50, angle.toFixed(1));
+        if (justifyCenter) {
+            s += f(72, 1) + f(11, x.toFixed(3)) + f(21, y.toFixed(3)) + f(31, '0.0');
+        }
+        return s;
+    };
+
+    // Slab outline
+    const slabOutline = [
+        { x: 0, y: 0 },
+        { x: L_cad, y: 0 },
+        { x: L_cad, y: W_cad },
+        { x: 0, y: W_cad }
+    ];
+    str += dxfPolyline(slabOutline, 'TF_Slab', true);
+
+    // Columns
+    const colSize = 0.4 * scale;
+    if (state.planColumns) {
+        state.planColumns.forEach(c => {
+            if (c.enabled) {
+                const cx = c.x * scale;
+                const cy = c.y * scale;
+                const colOutline = [
+                    { x: cx - colSize/2, y: cy - colSize/2 },
+                    { x: cx + colSize/2, y: cy - colSize/2 },
+                    { x: cx + colSize/2, y: cy + colSize/2 },
+                    { x: cx - colSize/2, y: cy + colSize/2 }
+                ];
+                str += dxfPolyline(colOutline, 'TF_Columns', true);
+            }
+        });
+    }
+
+    // X Tendons
+    if (state.planXTendons) {
+        state.planXTendons.forEach(y => {
+            if (y >= 0 && y <= totalWidth) {
+                const y_cad = y * scale;
+                str += dxfLine(0, y_cad, L_cad, y_cad, 'TF_Tendon');
+            }
+        });
+    }
+
+    // Y Tendons
+    const activePerpTendons = getActivePerpendicularTendons();
+    if (activePerpTendons) {
+        activePerpTendons.forEach(pt => {
+            const x_cad = pt.x * scale;
+            str += dxfLine(x_cad, 0, x_cad, W_cad, 'TF_Tendon');
+        });
+    }
+
+    // Annotations
+    if (includeText) {
+        const textHeight = 0.2 * scale;
+        
+        str += dxfText(0, W_cad + textHeight * 2, textHeight * 1.5, "POST-TENSIONED SLAB 2D PLAN LAYOUT", 'TF_Text');
+        str += dxfText(L_cad / 2, -textHeight * 2, textHeight, `SLAB LENGTH = ${totalLength.toFixed(1)} m`, 'TF_Text', 0, true);
+        str += dxfText(-textHeight * 2, W_cad / 2, textHeight, `SLAB WIDTH = ${totalWidth.toFixed(1)} m`, 'TF_Text', 90, true);
+    }
+
+    return str;
+}
+
+// AutoCAD AutoLISP (.LSP) Export
+function exportLISP() {
+    let lsp = '';
+    lsp += `;; ==========================================================\n`;
+    lsp += `;; TendonFlow AutoLISP Drawing Loader\n`;
+    lsp += `;; Instructions: Load this file in AutoCAD once (using APPLOAD\n`;
+    lsp += `;; or dragging and dropping the file onto AutoCAD canvas).\n`;
+    lsp += `;; \n`;
+    lsp += `;; Available Commands:\n`;
+    lsp += `;;   DRAWELEVC  - Draw Elevation Profile from Clipboard data\n`;
+    lsp += `;;   DRAWELEVF  - Draw Elevation Profile from downloaded .tfd file\n`;
+    lsp += `;;   DRAWPLANC  - Draw 2D Plan Layout from Clipboard data\n`;
+    lsp += `;;   DRAWPLANF  - Draw 2D Plan Layout from downloaded .tfd file\n`;
+    lsp += `;; ==========================================================\n\n`;
+
+    // Core renderer function
+    lsp += `(defun draw-tfd-list (data / item type pts closed cmd pt justify)\n`;
+    lsp += `  (command "_-layer" \n`;
+    lsp += `           "m" "TF_Slab" "c" "8" "TF_Slab" \n`;
+    lsp += `           "m" "TF_Tendon" "c" "4" "TF_Tendon" \n`;
+    lsp += `           "m" "TF_Duct" "c" "141" "TF_Duct" \n`;
+    lsp += `           "m" "TF_Limits" "c" "1" "TF_Limits" \n`;
+    lsp += `           "m" "TF_Tendon_Perp" "c" "3" "TF_Tendon_Perp" \n`;
+    lsp += `           "m" "TF_Columns" "c" "9" "TF_Columns" \n`;
+    lsp += `           "m" "TF_Text" "c" "2" "TF_Text" \n`;
+    lsp += `           "")\n\n`;
+    lsp += `  (foreach item data\n`;
+    lsp += `    (setq type (car item))\n`;
+    lsp += `    (cond\n`;
+    lsp += `      ((eq type 'LINE)\n`;
+    lsp += `       (setvar "clayer" (cadr item))\n`;
+    lsp += `       (command "_line" (nth 2 item) (nth 3 item) "")\n`;
+    lsp += `      )\n`;
+    lsp += `      ((eq type 'POLYLINE)\n`;
+    lsp += `       (setvar "clayer" (cadr item))\n`;
+    lsp += `       (setq pts (nth 2 item))\n`;
+    lsp += `       (setq closed (nth 3 item))\n`;
+    lsp += `       (setq cmd (list "_pline"))\n`;
+    lsp += `       (foreach pt pts\n`;
+    lsp += `         (setq cmd (append cmd (list pt)))\n`;
+    lsp += `       )\n`;
+    lsp += `       (if (= closed 1)\n`;
+    lsp += `         (setq cmd (append cmd (list "_c")))\n`;
+    lsp += `         (setq cmd (append cmd (list "")))\n`;
+    lsp += `       )\n`;
+    lsp += `       (apply 'command cmd)\n`;
+    lsp += `      )\n`;
+    lsp += `      ((eq type 'CIRCLE)\n`;
+    lsp += `       (setvar "clayer" (cadr item))\n`;
+    lsp += `       (command "_circle" (nth 2 item) (nth 3 item))\n`;
+    lsp += `      )\n`;
+    lsp += `      ((eq type 'TEXT)\n`;
+    lsp += `       (setvar "clayer" (cadr item))\n`;
+    lsp += `       (setq justify (nth 6 item))\n`;
+    lsp += `       (if (= justify 1)\n`;
+    lsp += `         (command "_text" "j" "c" (nth 2 item) (nth 3 item) (nth 4 item) (nth 5 item))\n`;
+    lsp += `         (command "_text" (nth 2 item) (nth 3 item) (nth 4 item) (nth 5 item))\n`;
+    lsp += `       )\n`;
+    lsp += `      )\n`;
+    lsp += `    )\n`;
+    lsp += `  )\n`;
+    lsp += `)\n\n`;
+
+    // DRAWELEVC command
+    lsp += `(defun c:drawelevc ( / oldecho oldsnap data)\n`;
+    lsp += `  (setq oldecho (getvar "cmdecho"))\n`;
+    lsp += `  (setq oldsnap (getvar "osmode"))\n`;
+    lsp += `  (setvar "cmdecho" 0)\n`;
+    lsp += `  (setvar "osmode" 0)\n\n`;
+    lsp += `  (if (and (boundp '*tfd-elev-data*) *tfd-elev-data*)\n`;
+    lsp += `    (progn\n`;
+    lsp += `      (setq data *tfd-elev-data*)\n`;
+    lsp += `      (setq *tfd-elev-data* nil)\n`;
+    lsp += `      (draw-tfd-list data)\n`;
+    lsp += `      (command "_zoom" "_e")\n`;
+    lsp += `      (princ "\\nElevation profile drawn successfully from clipboard data!")\n`;
+    lsp += `    )\n`;
+    lsp += `    (princ "\\nError: No copied elevation data found in clipboard. Please click 'Copy LISP Data' in TendonFlow first.")\n`;
+    lsp += `  )\n`;
+    lsp += `  (setvar "cmdecho" oldecho)\n`;
+    lsp += `  (setvar "osmode" oldsnap)\n`;
+    lsp += `  (princ)\n`;
+    lsp += `)\n\n`;
+
+    // DRAWELEVF command
+    lsp += `(defun c:drawelevf ( / oldecho oldsnap filepath file line data)\n`;
+    lsp += `  (setq oldecho (getvar "cmdecho"))\n`;
+    lsp += `  (setq oldsnap (getvar "osmode"))\n`;
+    lsp += `  (setvar "cmdecho" 0)\n`;
+    lsp += `  (setvar "osmode" 0)\n\n`;
+    lsp += `  (setq filepath (getfiled "Select TendonFlow Elevation Data File" "" "tfd;txt" 0))\n`;
+    lsp += `  (if filepath\n`;
+    lsp += `    (progn\n`;
+    lsp += `      (setq file (open filepath "r"))\n`;
+    lsp += `      (setq line (read-line file))\n`;
+    lsp += `      (close file)\n`;
+    lsp += `      (if line\n`;
+    lsp += `        (progn\n`;
+    lsp += `          (setq data (read line))\n`;
+    lsp += `          (draw-tfd-list data)\n`;
+    lsp += `          (command "_zoom" "_e")\n`;
+    lsp += `          (princ "\\nElevation profile drawn successfully from file!")\n`;
+    lsp += `        )\n`;
+    lsp += `        (princ "\\nError: Selected file is empty.")\n`;
+    lsp += `      )\n`;
+    lsp += `    )\n`;
+    lsp += `    (princ "\\nNo file selected.")\n`;
+    lsp += `  )\n`;
+    lsp += `  (setvar "cmdecho" oldecho)\n`;
+    lsp += `  (setvar "osmode" oldsnap)\n`;
+    lsp += `  (princ)\n`;
+    lsp += `)\n\n`;
+
+    // DRAWPLANC command
+    lsp += `(defun c:drawplanc ( / oldecho oldsnap data)\n`;
+    lsp += `  (setq oldecho (getvar "cmdecho"))\n`;
+    lsp += `  (setq oldsnap (getvar "osmode"))\n`;
+    lsp += `  (setvar "cmdecho" 0)\n`;
+    lsp += `  (setvar "osmode" 0)\n\n`;
+    lsp += `  (if (and (boundp '*tfd-plan-data*) *tfd-plan-data*)\n`;
+    lsp += `    (progn\n`;
+    lsp += `      (setq data *tfd-plan-data*)\n`;
+    lsp += `      (setq *tfd-plan-data* nil)\n`;
+    lsp += `      (draw-tfd-list data)\n`;
+    lsp += `      (command "_zoom" "_e")\n`;
+    lsp += `      (princ "\\n2D Plan Layout drawn successfully from clipboard data!")\n`;
+    lsp += `    )\n`;
+    lsp += `    (princ "\\nError: No copied plan data found in clipboard. Please click 'Copy LISP Data' in TendonFlow first.")\n`;
+    lsp += `  )\n`;
+    lsp += `  (setvar "cmdecho" oldecho)\n`;
+    lsp += `  (setvar "osmode" oldsnap)\n`;
+    lsp += `  (princ)\n`;
+    lsp += `)\n\n`;
+
+    // DRAWPLANF command
+    lsp += `(defun c:drawplanf ( / oldecho oldsnap filepath file line data)\n`;
+    lsp += `  (setq oldecho (getvar "cmdecho"))\n`;
+    lsp += `  (setq oldsnap (getvar "osmode"))\n`;
+    lsp += `  (setvar "cmdecho" 0)\n`;
+    lsp += `  (setvar "osmode" 0)\n\n`;
+    lsp += `  (setq filepath (getfiled "Select TendonFlow Plan Data File" "" "tfd;txt" 0))\n`;
+    lsp += `  (if filepath\n`;
+    lsp += `    (progn\n`;
+    lsp += `      (setq file (open filepath "r"))\n`;
+    lsp += `      (setq line (read-line file))\n`;
+    lsp += `      (close file)\n`;
+    lsp += `      (if line\n`;
+    lsp += `        (progn\n`;
+    lsp += `          (setq data (read line))\n`;
+    lsp += `          (draw-tfd-list data)\n`;
+    lsp += `          (command "_zoom" "_e")\n`;
+    lsp += `          (princ "\\nPlan layout drawn successfully from file!")\n`;
+    lsp += `        )\n`;
+    lsp += `        (princ "\\nError: Selected file is empty.")\n`;
+    lsp += `      )\n`;
+    lsp += `    )\n`;
+    lsp += `    (princ "\\nNo file selected.")\n`;
+    lsp += `  )\n`;
+    lsp += `  (setvar "cmdecho" oldecho)\n`;
+    lsp += `  (setvar "osmode" oldsnap)\n`;
+    lsp += `  (princ)\n`;
+    lsp += `)\n`;
+
+    // Trigger download
+    const blob = new Blob([lsp], { type: 'text/plain;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'TendonFlowDraw.lsp');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// AutoCAD TendonFlow Data File (.TFD) Export
+function exportTFD() {
+    const viewType = document.getElementById('cad-export-type').value;
+    const cadUnit = document.getElementById('cad-unit').value;
+    const vExag = parseFloat(document.getElementById('cad-exag').value);
+    const includeText = document.getElementById('cad-include-text').checked;
+
+    let scale = 1000; // millimeters
+    if (cadUnit === 'cm') scale = 100;
+    if (cadUnit === 'm') scale = 1;
+
+    let content = '';
+    if (viewType === 'elevation') {
+        content = generateElevationTFD(scale, vExag, includeText);
+    } else {
+        content = generatePlanTFD(scale, includeText);
+    }
+
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `tendonflow_pt_${viewType}_${cadUnit}.tfd`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function generateElevationTFD(scale, vExag, includeText) {
+    const list = [];
+    const totalLength = state.spanLengths.reduce((a, b) => a + b, 0);
+    const hSlab = state.slabThickness; 
+    
+    const L_cad = totalLength * scale;
+    const h_cad = (hSlab / 1000) * scale * vExag;
+
+    const addLine = (x1, y1, x2, y2, layer) => {
+        list.push(`(LINE "${layer}" (${x1.toFixed(3)} ${y1.toFixed(3)}) (${x2.toFixed(3)} ${y2.toFixed(3)}))`);
+    };
+
+    const addPolyline = (points, layer, closed = false) => {
+        const ptsStr = points.map(pt => `(${pt.x.toFixed(3)} ${pt.y.toFixed(3)})`).join(' ');
+        list.push(`(POLYLINE "${layer}" (${ptsStr}) ${closed ? 1 : 0})`);
+    };
+
+    const addCircle = (cx, cy, r, layer) => {
+        list.push(`(CIRCLE "${layer}" (${cx.toFixed(3)} ${cy.toFixed(3)}) ${r.toFixed(3)})`);
+    };
+
+    const addEllipse = (cx, cy, rx, ry, layer) => {
+        const points = [];
+        const segments = 32;
+        for (let i = 0; i < segments; i++) {
+            const theta = (i / segments) * 2 * Math.PI;
+            points.push({
+                x: cx + rx * Math.cos(theta),
+                y: cy + ry * Math.sin(theta)
+            });
+        }
+        addPolyline(points, layer, true);
+    };
+
+    const addText = (x, y, height, textVal, layer, angle = 0, justifyCenter = false) => {
+        const safeText = textVal.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+        list.push(`(TEXT "${layer}" (${x.toFixed(3)} ${y.toFixed(3)}) ${height.toFixed(3)} ${angle.toFixed(1)} "${safeText}" ${justifyCenter ? 1 : 0})`);
+    };
+
+    // Slab outline
+    addLine(0, 0, L_cad, 0, 'TF_Slab');
+    addLine(0, h_cad, L_cad, h_cad, 'TF_Slab');
+    addLine(0, 0, 0, h_cad, 'TF_Slab');
+    addLine(L_cad, 0, L_cad, h_cad, 'TF_Slab');
+    
+    // Neutral axis
+    const na_y_cad = (hSlab / 2 / 1000) * scale * vExag;
+    addLine(0, na_y_cad, L_cad, na_y_cad, 'TF_Slab');
+
+    // Columns
+    let currentX = 0;
+    const colWidth = 0.4 * scale;
+    const colHeight = 1.5 * scale;
+    for (let i = 0; i <= state.numSpans; i++) {
+        if (i > 0) currentX += state.spanLengths[i - 1];
+        const x_cad = currentX * scale;
+        addLine(x_cad - colWidth/2, -colHeight, x_cad - colWidth/2, 0, 'TF_Columns');
+        addLine(x_cad + colWidth/2, -colHeight, x_cad + colWidth/2, 0, 'TF_Columns');
+        addLine(x_cad - colWidth/2, -colHeight, x_cad + colWidth/2, -colHeight, 'TF_Columns');
+    }
+
+    // Cover Limits
+    const coverTop_cad = (state.coverTop / 1000) * scale * vExag;
+    const coverBottom_cad = (state.coverBottom / 1000) * scale * vExag;
+    addLine(0, h_cad - coverTop_cad, L_cad, h_cad - coverTop_cad, 'TF_Limits');
+    addLine(0, coverBottom_cad, L_cad, coverBottom_cad, 'TF_Limits');
+
+    // Tendon curve
+    const points = state.sampledPoints;
+    if (points && points.length > 0) {
+        const tendonPts = points.map(pt => ({
+            x: pt.xGlobal * scale,
+            y: (pt.y / 1000) * scale * vExag
+        }));
+        addPolyline(tendonPts, 'TF_Tendon');
+        
+        // Duct envelopes
+        const ductTopPts = points.map(pt => ({
+            x: pt.xGlobal * scale,
+            y: ((pt.y + state.ductDiameter / 2) / 1000) * scale * vExag
+        }));
+        addPolyline(ductTopPts, 'TF_Duct');
+
+        const ductBotPts = points.map(pt => ({
+            x: pt.xGlobal * scale,
+            y: ((pt.y - state.ductDiameter / 2) / 1000) * scale * vExag
+        }));
+        addPolyline(ductBotPts, 'TF_Duct');
+    }
+
+    // Perpendicular tendons
+    const activePerpTendons = getActivePerpendicularTendons();
+    if (activePerpTendons && activePerpTendons.length > 0) {
+        activePerpTendons.forEach(pt => {
+            const cx = pt.x * scale;
+            const cy = (pt.y / 1000) * scale * vExag;
+            const rx = (state.ductDiameter / 2) / 1000 * scale;
+            const ry = rx * vExag;
+
+            if (vExag === 1) {
+                addCircle(cx, cy, rx, 'TF_Tendon_Perp');
+            } else {
+                addEllipse(cx, cy, rx, ry, 'TF_Tendon_Perp');
+            }
+        });
+    }
+
+    // Annotations
+    if (includeText) {
+        const textHeight = (hSlab / 1000) * scale * 0.15;
+
+        // Support peaks
+        let runX = 0;
+        for (let i = 0; i <= state.numSpans; i++) {
+            if (i > 0) runX += state.spanLengths[i - 1];
+            const x_cad = runX * scale;
+            const y_val_mm = state.controlPoints.supports[i];
+            const y_cad = (y_val_mm / 1000) * scale * vExag;
+            const valStr = state.unit === 'cm' ? (y_val_mm / 10).toFixed(1) : y_val_mm.toFixed(0);
+            
+            addText(x_cad, y_cad + textHeight * 1.5, textHeight, `Peak: ${valStr} ${state.unit}`, 'TF_Text', 0, true);
+        }
+
+        // Low points
+        let spanStartX = 0;
+        for (let i = 0; i < state.numSpans; i++) {
+            const spanLen = state.spanLengths[i];
+            const lp = state.controlPoints.lowPoints[i];
+            const x_cad = (spanStartX + lp.xFract * spanLen) * scale;
+            const y_val_mm = lp.y;
+            const y_cad = (y_val_mm / 1000) * scale * vExag;
+            const valStr = state.unit === 'cm' ? (y_val_mm / 10).toFixed(1) : y_val_mm.toFixed(0);
+
+            addText(x_cad, y_cad - textHeight * 2.2, textHeight, `Low: ${valStr} ${state.unit}`, 'TF_Text', 0, true);
+            spanStartX += spanLen;
+        }
+
+        // Title box
+        const infoX = 0;
+        const infoY = h_cad + textHeight * 4.0;
+        addText(infoX, infoY, textHeight * 1.5, "POST-TENSIONED TENDON ELEVATION PROFILE", 'TF_Text');
+        addText(infoX, infoY - textHeight * 2, textHeight, `Slab Thickness: ${fromMm(state.slabThickness).toFixed(1)} ${state.unit} | Spans: ${state.numSpans} | Exaggeration: ${vExag}x`, 'TF_Text');
+        addText(infoX, infoY - textHeight * 3.5, textHeight, `Force X: ${state.tendonForce} kN | Spacing X: ${state.tendonSpacingX} m | Duct OD: ${fromMm(state.ductDiameter).toFixed(1)} ${state.unit}`, 'TF_Text');
+    }
+
+    return `(${list.join(' ')})`;
+}
+
+function generatePlanTFD(scale, includeText) {
+    const list = [];
+    const totalLength = state.spanLengths.reduce((a, b) => a + b, 0);
+    const totalWidth = state.slabWidth;
+
+    const L_cad = totalLength * scale;
+    const W_cad = totalWidth * scale;
+
+    const addLine = (x1, y1, x2, y2, layer) => {
+        list.push(`(LINE "${layer}" (${x1.toFixed(3)} ${y1.toFixed(3)}) (${x2.toFixed(3)} ${y2.toFixed(3)}))`);
+    };
+
+    const addPolyline = (points, layer, closed = false) => {
+        const ptsStr = points.map(pt => `(${pt.x.toFixed(3)} ${pt.y.toFixed(3)})`).join(' ');
+        list.push(`(POLYLINE "${layer}" (${ptsStr}) ${closed ? 1 : 0})`);
+    };
+
+    const addText = (x, y, height, textVal, layer, angle = 0, justifyCenter = false) => {
+        const safeText = textVal.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+        list.push(`(TEXT "${layer}" (${x.toFixed(3)} ${y.toFixed(3)}) ${height.toFixed(3)} ${angle.toFixed(1)} "${safeText}" ${justifyCenter ? 1 : 0})`);
+    };
+
+    // Slab outline
+    const slabOutline = [
+        { x: 0, y: 0 },
+        { x: L_cad, y: 0 },
+        { x: L_cad, y: W_cad },
+        { x: 0, y: W_cad }
+    ];
+    addPolyline(slabOutline, 'TF_Slab', true);
+
+    // Columns
+    const colSize = 0.4 * scale;
+    if (state.planColumns) {
+        state.planColumns.forEach(c => {
+            if (c.enabled) {
+                const cx = c.x * scale;
+                const cy = c.y * scale;
+                const colOutline = [
+                    { x: cx - colSize/2, y: cy - colSize/2 },
+                    { x: cx + colSize/2, y: cy - colSize/2 },
+                    { x: cx + colSize/2, y: cy + colSize/2 },
+                    { x: cx - colSize/2, y: cy + colSize/2 }
+                ];
+                addPolyline(colOutline, 'TF_Columns', true);
+            }
+        });
+    }
+
+    // X Tendons
+    if (state.planXTendons) {
+        state.planXTendons.forEach(y => {
+            if (y >= 0 && y <= totalWidth) {
+                const y_cad = y * scale;
+                addLine(0, y_cad, L_cad, y_cad, 'TF_Tendon');
+            }
+        });
+    }
+
+    // Y Tendons
+    const activePerpTendons = getActivePerpendicularTendons();
+    if (activePerpTendons) {
+        activePerpTendons.forEach(pt => {
+            const x_cad = pt.x * scale;
+            addLine(x_cad, 0, x_cad, W_cad, 'TF_Tendon');
+        });
+    }
+
+    // Annotations
+    if (includeText) {
+        const textHeight = 0.2 * scale;
+        
+        addText(0, W_cad + textHeight * 2, textHeight * 1.5, "POST-TENSIONED SLAB 2D PLAN LAYOUT", 'TF_Text');
+        addText(L_cad / 2, -textHeight * 2, textHeight, `SLAB LENGTH = ${totalLength.toFixed(1)} m`, 'TF_Text', 0, true);
+        addText(-textHeight * 2, W_cad / 2, textHeight, `SLAB WIDTH = ${totalWidth.toFixed(1)} m`, 'TF_Text', 90, true);
+    }
+
+    return `(${list.join(' ')})`;
 }
 
 // Export current state as a JSON file (with naming)
