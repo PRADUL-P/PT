@@ -63,6 +63,15 @@
                         </select>
                     </div>
                     <div class="form-group">
+                        <label for="num-col-rows">Number of Column Rows</label>
+                        <select id="num-col-rows" class="form-control">
+                            <option value="1">1 Row (Center)</option>
+                            <option value="2">2 Rows (Left, Right)</option>
+                            <option value="3" selected>3 Rows (Left, Mid, Right)</option>
+                            <option value="4">4 Rows (CL, CML, CMR, CR)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
                         <label for="unit-select">Measurement Unit</label>
                         <select id="unit-select" class="form-control">
                             <option value="cm" selected>Centimeters (cm)</option>
@@ -124,6 +133,16 @@
                             <span id="inflection-ratio-val">0.10</span>
                         </div>
                     </div>
+                    <div class="form-row">
+                        <div class="form-group col">
+                            <label for="min-support-angle">Min Support Angle (°)</label>
+                            <input type="number" id="min-support-angle" class="form-control" value="2.0" min="0" max="45" step="0.5">
+                        </div>
+                        <div class="form-group col">
+                            <label for="max-support-angle">Max Support Angle (°)</label>
+                            <input type="number" id="max-support-angle" class="form-control" value="6.0" min="0" max="45" step="0.5">
+                        </div>
+                    </div>
                 </div>
 
                 <div class="panel-section">
@@ -172,12 +191,27 @@
                             <input type="number" id="tendon-spacing-y" class="form-control" value="1.5" min="0.5" max="5.0" step="0.1">
                         </div>
                     </div>
+                    <div class="form-group">
+                        <label for="duct-diameter">Duct Outer Diameter (<span class="unit-label-duct">cm</span>)</label>
+                        <input type="number" id="duct-diameter" class="form-control" value="2.5" min="1.0" max="15.0" step="0.1">
+                    </div>
                 </div>
 
                 <div class="panel-section" id="section-elevation-heights">
                     <h2>Tendon Profile Heights</h2>
                     <div id="node-inputs-container" style="display: flex; flex-direction: column; gap: 0.75rem;">
                         <!-- Dynamically populated by JS -->
+                    </div>
+                </div>
+
+                <div class="panel-section" id="section-perpendicular-tendons">
+                    <h2>Perpendicular Tendons (Elevation View)</h2>
+                    <div class="form-group">
+                        <label for="num-tendon-sets">Number of Tendon Sets</label>
+                        <input type="number" id="num-tendon-sets" class="form-control" value="4" min="0" max="10">
+                    </div>
+                    <div id="tendon-sets-container" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <!-- Dynamic sets -->
                     </div>
                 </div>
 
@@ -202,9 +236,15 @@
                 <!-- Visualizer Panel -->
                 <div class="display-card visualizer-card">
                     <div class="card-header">
-                        <div class="tab-group">
-                            <button id="tab-elevation" class="tab-btn active">Elevation Profile</button>
-                            <button id="tab-plan" class="tab-btn">2D Plan Layout</button>
+                        <div style="display: flex; gap: 0.75rem; align-items: center;">
+                            <div class="tab-group">
+                                <button id="tab-elevation" class="tab-btn active">Elevation Profile</button>
+                                <button id="tab-plan" class="tab-btn">2D Plan Layout</button>
+                                <button id="tab-split" class="tab-btn">Split View</button>
+                            </div>
+                            <div class="tab-group" id="section-select-container" style="display: flex;">
+                                <!-- Dynamic section tabs -->
+                            </div>
                         </div>
                         <div class="legend" id="visualizer-legend">
                             <span class="legend-item"><span class="legend-dot c-slab"></span>Slab</span>
@@ -216,6 +256,9 @@
                     <div class="visualizer-container" id="svg-container">
                         <!-- Responsive interactive SVG -->
                         <svg id="profile-svg" viewBox="0 0 1000 350" preserveAspectRatio="xMidYMid meet">
+                            <!-- SVG contents will be dynamically generated by JS -->
+                        </svg>
+                        <svg id="plan-svg" viewBox="0 0 1000 350" preserveAspectRatio="xMidYMid meet">
                             <!-- SVG contents will be dynamically generated by JS -->
                         </svg>
                         <div id="canvas-tooltip" class="tooltip hidden"></div>
@@ -293,6 +336,26 @@
                                     <p id="check-prestress-desc">Average compressive stress: 1.55 MPa (Target: 0.7 - 3.5 MPa)</p>
                                 </div>
                             </div>
+
+                            <div class="check-item" id="check-support-angles">
+                                <div class="check-status-icon">
+                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                                </div>
+                                <div class="check-content">
+                                    <h4>Support Tangent Angles</h4>
+                                    <p id="check-support-angles-desc">All support slope angles are within limits.</p>
+                                </div>
+                            </div>
+
+                            <div class="check-item" id="check-tendon-clashes">
+                                <div class="check-status-icon">
+                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                                </div>
+                                <div class="check-content">
+                                    <h4>Tendon Clash Detection</h4>
+                                    <p id="check-tendon-clashes-desc">No clashes detected between longitudinal and perpendicular tendons.</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -328,6 +391,6 @@
         </main>
     </div>
 
-    <script src="app.js"></script>
+    <script type="module" src="app.js"></script>
 </body>
 </html>

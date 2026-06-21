@@ -322,10 +322,37 @@ label {
     overflow: hidden;
 }
 
-#profile-svg {
+#profile-svg, #plan-svg {
+    display: none;
     width: 100%;
     height: 100%;
     user-select: none;
+}
+
+/* Visibility based on active view state */
+.visualizer-container.tab-elevation #profile-svg {
+    display: block;
+}
+.visualizer-container.tab-plan #plan-svg {
+    display: block;
+}
+.visualizer-container.split-active {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    align-items: stretch;
+    padding: 0.5rem;
+}
+.visualizer-container.split-active #profile-svg,
+.visualizer-container.split-active #plan-svg {
+    display: block;
+}
+
+.svg-section-cut-overlay {
+    cursor: ns-resize;
+}
+.svg-section-cut-line {
+    pointer-events: none;
 }
 
 /* SVG Styling */
@@ -785,3 +812,150 @@ circle[data-type="support"].svg-drag-node-locked {
 circle[data-type="lowpoint"].svg-drag-node-locked {
     cursor: ew-resize;
 }
+
+/* Disabled Columns in Plan View */
+.svg-column-plan-disabled {
+    fill: #475569;
+    stroke: #64748b;
+    stroke-width: 1.5px;
+    cursor: pointer;
+    transition: r 0.15s ease, opacity 0.15s ease;
+}
+
+.svg-column-plan-disabled:hover {
+    opacity: 0.8 !important;
+    r: 9;
+}
+
+/* Column Editor Overlay */
+.column-editor-card {
+    position: absolute;
+    background-color: rgba(18, 24, 36, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    padding: 0.75rem;
+    width: 260px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.column-editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 0.35rem;
+}
+
+.column-editor-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--color-primary-light);
+    font-family: 'Space Grotesk', sans-serif;
+}
+
+.column-editor-close {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px;
+}
+
+.column-editor-close:hover {
+    color: var(--color-danger);
+}
+
+.column-editor-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.column-editor-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+}
+
+.column-editor-label {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.column-editor-input {
+    width: 80px;
+    background-color: var(--bg-base);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    text-align: right;
+}
+
+.column-editor-input:focus {
+    outline: none;
+    border-color: var(--color-primary-light);
+}
+
+.column-editor-checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    margin-bottom: 0.25rem;
+}
+
+.column-editor-checkbox {
+    accent-color: var(--color-primary-light);
+    cursor: pointer;
+}
+
+/* Inline Lock Buttons in Editor Popup */
+.btn-lock-inline {
+    background-color: var(--bg-base);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--text-secondary);
+    border-radius: 6px;
+    padding: 0.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    height: 28px;
+    width: 28px;
+}
+
+.btn-lock-inline:hover {
+    border-color: var(--color-primary-light);
+    color: var(--text-primary);
+}
+
+.btn-lock-inline.locked {
+    background-color: var(--color-warning-glow);
+    border-color: var(--color-warning);
+    color: var(--color-warning);
+}
+
+/* Elevation View Column Highlights */
+.svg-support-column.active-section-col {
+    fill: rgba(56, 189, 248, 0.25);
+    stroke: var(--color-primary-light);
+    stroke-width: 2px;
+}
+
+
