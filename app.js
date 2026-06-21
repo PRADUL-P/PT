@@ -27,6 +27,8 @@ const state = {
     tendonSpacingY: 1.5,      // meters
     verticalExaggeration: 5,  // Scale multiplier for vertical representation
     activeTab: 'elevation',   // 'elevation' or 'plan'
+    clipboardTendonSet: null, // copied perpendicular tendon set state
+    clipboardControlPoints: null, // copied tendon profile heights state
     minSupportAngle: 2.0,     // degrees
     maxSupportAngle: 6.0,     // degrees
     elevationTendonSets: [],  // Perpendicular tendon sets in Elevation view
@@ -119,6 +121,8 @@ const DOM = {
     planSvg: document.getElementById('plan-svg'),
     visualizerLegend: document.getElementById('visualizer-legend'),
     nodeInputsContainer: document.getElementById('node-inputs-container'),
+    btnCopyProfile: document.getElementById('btn-copy-profile'),
+    btnPasteProfile: document.getElementById('btn-paste-profile'),
 
     // Perpendicular Tendon Controls
     minSupportAngle: document.getElementById('min-support-angle'),
@@ -760,6 +764,19 @@ function syncStateToInputs() {
         if (perpPanel) perpPanel.style.display = 'block';
         if (planPanel) planPanel.style.display = 'none';
         updateSidebarTendonSets();
+    }
+
+    // Sync profile paste button state
+    if (DOM.btnPasteProfile) {
+        if (!state.clipboardControlPoints) {
+            DOM.btnPasteProfile.disabled = true;
+            DOM.btnPasteProfile.style.opacity = '0.4';
+            DOM.btnPasteProfile.style.cursor = 'not-allowed';
+        } else {
+            DOM.btnPasteProfile.disabled = false;
+            DOM.btnPasteProfile.style.opacity = '1';
+            DOM.btnPasteProfile.style.cursor = 'pointer';
+        }
     }
 }
 
@@ -2493,6 +2510,50 @@ function renderSidebarTendonSets() {
         title.style.color = '#38bdf8';
         title.textContent = `Set ${idx + 1}`;
         header.appendChild(title);
+
+        const btnGroup = document.createElement('div');
+        btnGroup.style.display = 'flex';
+        btnGroup.style.gap = '0.3rem';
+
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'btn btn-secondary';
+        copyBtn.style.padding = '2px 6px';
+        copyBtn.style.fontSize = '0.65rem';
+        copyBtn.style.lineHeight = '1';
+        copyBtn.textContent = 'Copy';
+        copyBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            state.clipboardTendonSet = { ...set };
+            renderSidebarTendonSets();
+        });
+        btnGroup.appendChild(copyBtn);
+
+        const pasteBtn = document.createElement('button');
+        pasteBtn.className = 'btn btn-secondary';
+        pasteBtn.style.padding = '2px 6px';
+        pasteBtn.style.fontSize = '0.65rem';
+        pasteBtn.style.lineHeight = '1';
+        pasteBtn.textContent = 'Paste';
+        if (!state.clipboardTendonSet) {
+            pasteBtn.disabled = true;
+            pasteBtn.style.opacity = '0.4';
+            pasteBtn.style.cursor = 'not-allowed';
+        }
+        pasteBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (state.clipboardTendonSet) {
+                set.supportIdx = state.clipboardTendonSet.supportIdx;
+                set.direction = state.clipboardTendonSet.direction;
+                set.count = state.clipboardTendonSet.count;
+                set.spacing = state.clipboardTendonSet.spacing;
+                set.offset = state.clipboardTendonSet.offset;
+                set.height = state.clipboardTendonSet.height;
+                calculateAndRender();
+            }
+        });
+        btnGroup.appendChild(pasteBtn);
+
+        header.appendChild(btnGroup);
         
         setDiv.appendChild(header);
 
@@ -2669,23 +2730,21 @@ function renderSidebarTendonSets() {
         hgInput.id = `input-set-height-${idx}`;
         const hgVal = fromMm(set.height);
         hgInput.value = hgVal.toFixed(state.unit === 'cm' ? 1 : 0);
-        hgInput.min = fromMm(state.coverBottom);
-        hgInput.max = fromMm(state.slabThickness - state.coverTop);
+        hgInput.min = 0;
+        hgInput.max = fromMm(state.slabThickness);
         hgInput.step = state.unit === 'cm' ? 0.5 : 5;
         hgInput.addEventListener('input', () => {
             let val = parseFloat(hgInput.value);
             if (!isNaN(val)) {
-                const minH = fromMm(state.coverBottom);
-                const maxH = fromMm(state.slabThickness - state.coverTop);
-                val = Math.max(minH, Math.min(maxH, val));
+                // Do not clamp while typing to prevent divergence between UI and state
                 set.height = toMm(val);
                 calculateAndRender();
             }
         });
         hgInput.addEventListener('change', () => {
             let val = parseFloat(hgInput.value) || fromMm(state.slabThickness - state.coverTop - 15);
-            const minH = fromMm(state.coverBottom);
-            const maxH = fromMm(state.slabThickness - state.coverTop);
+            const minH = 0;
+            const maxH = fromMm(state.slabThickness);
             val = Math.max(minH, Math.min(maxH, val));
             set.height = toMm(val);
             hgInput.value = val.toFixed(state.unit === 'cm' ? 1 : 0);
@@ -2767,8 +2826,8 @@ function updateSidebarTendonSets() {
         if (hgInput && document.activeElement !== hgInput) {
             const hgVal = fromMm(set.height);
             hgInput.value = hgVal.toFixed(state.unit === 'cm' ? 1 : 0);
-            hgInput.min = fromMm(state.coverBottom);
-            hgInput.max = fromMm(state.slabThickness - state.coverTop);
+            hgInput.min = 0;
+            hgInput.max = fromMm(state.slabThickness);
             const label = hgInput.previousElementSibling;
             if (label) label.textContent = `Height (${state.unit})`;
         }
@@ -2963,6 +3022,46 @@ function setupEventListeners() {
         DOM.tabSplit.addEventListener('click', () => {
             state.activeTab = 'split';
             calculateAndRender();
+        });
+    }
+
+    // Tendon Profile Copy/Paste Listeners
+    if (DOM.btnCopyProfile) {
+        DOM.btnCopyProfile.addEventListener('click', (e) => {
+            e.preventDefault();
+            state.clipboardControlPoints = JSON.parse(JSON.stringify(state.controlPoints));
+            syncStateToInputs();
+        });
+    }
+
+    if (DOM.btnPasteProfile) {
+        DOM.btnPasteProfile.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (state.clipboardControlPoints) {
+                const src = state.clipboardControlPoints;
+                const dest = state.controlPoints;
+                
+                // Copy supports
+                const minSupports = Math.min(src.supports.length, dest.supports.length);
+                for (let i = 0; i < minSupports; i++) {
+                    dest.supports[i] = src.supports[i];
+                    if (src.supportsLocked && src.supportsLocked[i] !== undefined) {
+                        dest.supportsLocked[i] = src.supportsLocked[i];
+                    }
+                }
+                
+                // Copy low points
+                const minLowPoints = Math.min(src.lowPoints.length, dest.lowPoints.length);
+                for (let i = 0; i < minLowPoints; i++) {
+                    dest.lowPoints[i].y = src.lowPoints[i].y;
+                    dest.lowPoints[i].xFract = src.lowPoints[i].xFract;
+                    if (src.lowPointsLocked && src.lowPointsLocked[i] !== undefined) {
+                        dest.lowPointsLocked[i] = src.lowPointsLocked[i];
+                    }
+                }
+                
+                calculateAndRender();
+            }
         });
     }
 }
