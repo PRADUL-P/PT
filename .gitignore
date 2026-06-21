@@ -1,0 +1,9 @@
+# Dependency directories
+node_modules/
+
+# Build outputs
+dist/
+
+# Logs and temp files
+*.log
+.DS_Store

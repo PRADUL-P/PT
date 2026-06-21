@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TendonFlow - PT Slab Tendon Path Designer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="dark-theme">
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo-area">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <path fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" d="M2 17 C 8 2, 16 22, 22 7" />
+                        <circle cx="2" cy="17" r="2" fill="currentColor" />
+                        <circle cx="22" cy="7" r="2" fill="currentColor" />
+                    </svg>
+                </div>
+                <h1>TendonFlow <span class="badge">PT Slab Designer</span></h1>
+            </div>
+            <div class="header-actions">
+                <button id="btn-reset" class="btn btn-secondary">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                    Reset Design
+                </button>
+                <button id="btn-save-json" class="btn btn-primary">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                    Save Design
+                </button>
+                <button id="btn-load-json" class="btn btn-primary">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    Load Design
+                </button>
+                <input type="file" id="input-load-json" accept=".json" style="display: none;">
+                <button id="btn-export-csv" class="btn btn-primary">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Export CSV
+                </button>
+                <button id="btn-export-svg" class="btn btn-primary">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    Export SVG Diagram
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <main class="app-workspace">
+            <!-- Sidebar: Parameters -->
+            <aside class="parameters-panel">
+                <div class="panel-section">
+                    <h2>Slab Geometry</h2>
+                    <div class="form-group">
+                        <label for="num-spans">Number of Spans</label>
+                        <select id="num-spans" class="form-control">
+                            <option value="1">1 Span</option>
+                            <option value="2" selected>2 Spans</option>
+                            <option value="3">3 Spans</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="unit-select">Measurement Unit</label>
+                        <select id="unit-select" class="form-control">
+                            <option value="cm" selected>Centimeters (cm)</option>
+                            <option value="mm">Millimeters (mm)</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col">
+                            <label for="slab-thickness">Thickness (<span class="unit-label-thickness">cm</span>)</label>
+                            <input type="number" id="slab-thickness" class="form-control" value="20" min="10" max="60" step="1">
+                        </div>
+                        <div class="form-group col">
+                            <label for="slab-width">Slab Width (m)</label>
+                            <input type="number" id="slab-width" class="form-control" value="12.0" min="2" max="100" step="0.5">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col">
+                            <label for="span-y-len">Y-Span Length (m)</label>
+                            <input type="number" id="span-y-len" class="form-control" value="8.0" min="3" max="25" step="0.1">
+                        </div>
+                        <div class="form-group col">
+                            <label for="concrete-density">Density (kN/m³)</label>
+                            <input type="number" id="concrete-density" class="form-control" value="24" min="20" max="26" step="0.5">
+                        </div>
+                    </div>
+                    <div class="span-lengths-container">
+                        <div class="form-group span-len-group" id="span-1-container">
+                            <label for="span-1-len">Span 1 Length (m)</label>
+                            <input type="number" id="span-1-len" class="form-control span-len-input" value="8.0" min="3" max="25" step="0.1">
+                        </div>
+                        <div class="form-group span-len-group" id="span-2-container">
+                            <label for="span-2-len">Span 2 Length (m)</label>
+                            <input type="number" id="span-2-len" class="form-control span-len-input" value="9.0" min="3" max="25" step="0.1">
+                        </div>
+                        <div class="form-group span-len-group" id="span-3-container">
+                            <label for="span-3-len">Span 3 Length (m)</label>
+                            <input type="number" id="span-3-len" class="form-control span-len-input" value="8.0" min="3" max="25" step="0.1">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <h2>Concrete Cover & Clearances</h2>
+                    <div class="form-row">
+                        <div class="form-group col">
+                            <label for="cover-top">Top Cover (<span class="unit-label-cover">cm</span>)</label>
+                            <input type="number" id="cover-top" class="form-control" value="2.5" min="1.5" max="10" step="0.5">
+                        </div>
+                        <div class="form-group col">
+                            <label for="cover-bottom">Bottom Cover (<span class="unit-label-cover">cm</span>)</label>
+                            <input type="number" id="cover-bottom" class="form-control" value="2.5" min="1.5" max="10" step="0.5">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="inflection-ratio">Inflection Point Ratio (a/L)</label>
+                        <div class="slider-container">
+                            <input type="range" id="inflection-ratio" min="0.05" max="0.25" step="0.01" value="0.10">
+                            <span id="inflection-ratio-val">0.10</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <h2>Tendon & Prestressing</h2>
+                    <div class="form-row">
+                        <div class="form-group col">
+                            <label for="tendon-force">X Jacking Force (kN)</label>
+                            <input type="number" id="tendon-force" class="form-control" value="1400" min="100" max="5000" step="50">
+                        </div>
+                        <div class="form-group col">
+                            <label for="tendon-force-y">Y Jacking Force (kN)</label>
+                            <input type="number" id="tendon-force-y" class="form-control" value="1400" min="100" max="5000" step="50">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col">
+                            <label for="jacking-end">Jacking End</label>
+                            <select id="jacking-end" class="form-control">
+                                <option value="left">Left End Only</option>
+                                <option value="right">Right End Only</option>
+                                <option value="both">Both Ends</option>
+                            </select>
+                        </div>
+                        <div class="form-group col">
+                            <label for="anchor-set">Anchor Set (<span class="unit-label-anchorset">cm</span>)</label>
+                            <input type="number" id="anchor-set" class="form-control" value="0.6" min="0" max="1.5" step="0.1">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col">
+                            <label for="friction-mu">Curvature Coeff (μ)</label>
+                            <input type="number" id="friction-mu" class="form-control" value="0.15" min="0.05" max="0.30" step="0.01">
+                        </div>
+                        <div class="form-group col">
+                            <label for="friction-k">Wobble Coeff (k, rad/m)</label>
+                            <input type="number" id="friction-k" class="form-control" value="0.002" min="0.0005" max="0.005" step="0.0005">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col">
+                            <label for="tendon-spacing-x">X Spacing (m)</label>
+                            <input type="number" id="tendon-spacing-x" class="form-control" value="1.5" min="0.5" max="5.0" step="0.1">
+                        </div>
+                        <div class="form-group col">
+                            <label for="tendon-spacing-y">Y Spacing (m)</label>
+                            <input type="number" id="tendon-spacing-y" class="form-control" value="1.5" min="0.5" max="5.0" step="0.1">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel-section" id="section-elevation-heights">
+                    <h2>Tendon Profile Heights</h2>
+                    <div id="node-inputs-container" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <!-- Dynamically populated by JS -->
+                    </div>
+                </div>
+
+                <div class="panel-section" id="section-plan-layout" style="display: none;">
+                    <h2>2D Plan Layout</h2>
+                    <div class="form-group">
+                        <label for="input-plan-x-tendons">X-Tendons Y-Positions (m, comma-sep)</label>
+                        <input type="text" id="input-plan-x-tendons" class="form-control" value="1.5, 3.0, 4.5, 6.0, 7.5, 9.0, 10.5">
+                    </div>
+                    <div id="plan-y-tendons-container" style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem;">
+                        <!-- Dynamic span inputs -->
+                    </div>
+                    <h3>Column Coordinates (m)</h3>
+                    <div id="plan-columns-container" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 250px; overflow-y: auto; padding-right: 4px;">
+                        <!-- Dynamic column coordinates -->
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main Interactive Display -->
+            <section class="display-area">
+                <!-- Visualizer Panel -->
+                <div class="display-card visualizer-card">
+                    <div class="card-header">
+                        <div class="tab-group">
+                            <button id="tab-elevation" class="tab-btn active">Elevation Profile</button>
+                            <button id="tab-plan" class="tab-btn">2D Plan Layout</button>
+                        </div>
+                        <div class="legend" id="visualizer-legend">
+                            <span class="legend-item"><span class="legend-dot c-slab"></span>Slab</span>
+                            <span class="legend-item"><span class="legend-dot c-tendon"></span>Tendon</span>
+                            <span class="legend-item"><span class="legend-dot c-limits"></span>Cover Limits</span>
+                            <span class="legend-item"><span class="legend-dot c-handles"></span>Drag Handles</span>
+                        </div>
+                    </div>
+                    <div class="visualizer-container" id="svg-container">
+                        <!-- Responsive interactive SVG -->
+                        <svg id="profile-svg" viewBox="0 0 1000 350" preserveAspectRatio="xMidYMid meet">
+                            <!-- SVG contents will be dynamically generated by JS -->
+                        </svg>
+                        <div id="canvas-tooltip" class="tooltip hidden"></div>
+                    </div>
+                    <div class="canvas-controls">
+                        <span>💡 Drag the <strong style="color: #60a5fa;">blue nodes</strong> to adjust the tendon profile. Double click nodes to reset them to default limits.</span>
+                        <div class="vertical-scale-control">
+                            <label for="vertical-exaggeration">Vert. Exaggeration:</label>
+                            <select id="vertical-exaggeration" class="form-control form-control-sm">
+                                <option value="2">2x</option>
+                                <option value="5" selected>5x</option>
+                                <option value="8">8x</option>
+                                <option value="12">12x</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analysis & Charts Split Row -->
+                <div class="analysis-split-row">
+                    <!-- Friction Loss Chart -->
+                    <div class="display-card chart-card">
+                        <div class="card-header">
+                            <h3>Prestressing Force & Friction Losses</h3>
+                            <div class="chart-stats">
+                                <div class="stat-bubble">
+                                    <span class="stat-label">Min Force</span>
+                                    <span class="stat-value" id="min-force-val">1150 kN</span>
+                                </div>
+                                <div class="stat-bubble">
+                                    <span class="stat-label">Max Loss</span>
+                                    <span class="stat-value" id="max-loss-val">17.8%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="loss-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Load Balancing Results & Engineering Checks -->
+                    <div class="display-card checks-card">
+                        <div class="card-header">
+                            <h3>Design Verification & Checks</h3>
+                        </div>
+                        <div class="checks-list">
+                            <div class="check-item" id="check-cover">
+                                <div class="check-status-icon">
+                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                                </div>
+                                <div class="check-content">
+                                    <h4>Concrete Cover Requirements</h4>
+                                    <p id="check-cover-desc">All tendon points satisfy the specified concrete cover constraints.</p>
+                                </div>
+                            </div>
+
+                            <div class="check-item" id="check-load-balancing">
+                                <div class="check-status-icon">
+                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                                </div>
+                                <div class="check-content">
+                                    <h4>Load Balancing Target (60% - 80% Self-Weight)</h4>
+                                    <div class="balancing-metrics" id="balancing-metrics">
+                                        <!-- Will be dynamically updated -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="check-item" id="check-avg-prestress">
+                                <div class="check-status-icon">
+                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                                </div>
+                                <div class="check-content">
+                                    <h4>Average Slab Prestress (P/A)</h4>
+                                    <p id="check-prestress-desc">Average compressive stress: 1.55 MPa (Target: 0.7 - 3.5 MPa)</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Panel: Coordinates Table & Detailed calculations -->
+                <div class="display-card coordinates-card">
+                    <div class="card-header">
+                        <h3>Tendon Coordinate Profile Data</h3>
+                        <div class="table-actions">
+                            <span class="table-info">Increment: 0.5m</span>
+                        </div>
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="coords-table" id="coords-table">
+                            <thead>
+                                <tr>
+                                    <th>Span</th>
+                                    <th>x from Left (m)</th>
+                                    <th>x Local (m)</th>
+                                    <th>y Coordinate (<span class="unit-label-y">cm</span>)</th>
+                                    <th>Tendon Force (kN)</th>
+                                    <th>Slope (rad)</th>
+                                    <th>Equivalent Load (kN/m)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Coordinates will be loaded here dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
