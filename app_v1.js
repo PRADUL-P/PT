@@ -1,4 +1,4 @@
-/**
+﻿/**
  * TendonFlow - PT Slab Tendon Path Designer
  * Core Application Logic, Mathematical Solver, and SVG Visualizer
  */
@@ -10,7 +10,7 @@ const state = {
     numSpans: 2,
     unit: 'cm', // 'mm' or 'cm'
     slabThickness: 200,      // mm
-    concreteDensity: 24.0,    // kN/m³
+    concreteDensity: 24.0,    // kN/m┬│
     spanLengths: [8.0, 9.0], // meters
     slabWidth: 12.0,          // meters
     spanYLen: 8.0,            // meters
@@ -50,8 +50,6 @@ const state = {
     },
 
     // 2D Plan Layout State
-    planXTendonsMode: 'spacing', // 'spacing' or 'positions'
-    planXTendonsSpacing: 1.5, // spacing in meters
     planXTendons: [1.5, 3.0, 4.5, 6.0, 7.5, 9.0, 10.5], // Y-coordinates in meters
     planYTendons: [
         [1.5, 2.0, 6.0, 6.5], // Span 1 relative X
@@ -71,8 +69,7 @@ const state = {
 // UI Elements
 const DOM = {
     numSpans: document.getElementById('num-spans'),
-    numColRowsElev: document.getElementById('num-col-rows-elev'),
-    numColRowsPlan: document.getElementById('num-col-rows-plan'),
+    numColRows: document.getElementById('num-col-rows'),
     unitSelect: document.getElementById('unit-select'),
     slabThickness: document.getElementById('slab-thickness'),
     slabWidth: document.getElementById('slab-width'),
@@ -214,11 +211,11 @@ function getSupportAngles(i) {
 // Format support angles for the sidebar display
 function formatSupportAngleText(angles) {
     if (angles.left !== null && angles.right !== null) {
-        return `${angles.left.toFixed(1)}° | ${angles.right.toFixed(1)}°`;
+        return `${angles.left.toFixed(1)}┬░ | ${angles.right.toFixed(1)}┬░`;
     } else if (angles.left !== null) {
-        return `${angles.left.toFixed(1)}°`;
+        return `${angles.left.toFixed(1)}┬░`;
     } else if (angles.right !== null) {
-        return `${angles.right.toFixed(1)}°`;
+        return `${angles.right.toFixed(1)}┬░`;
     }
     return '';
 }
@@ -226,11 +223,11 @@ function formatSupportAngleText(angles) {
 // Format support angles for the SVG visualizer display
 function formatSvgSupportAngleText(angles) {
     if (angles.left !== null && angles.right !== null) {
-        return `∠${angles.left.toFixed(1)}°|${angles.right.toFixed(1)}°`;
+        return `Γêá${angles.left.toFixed(1)}┬░|${angles.right.toFixed(1)}┬░`;
     } else if (angles.left !== null) {
-        return `∠${angles.left.toFixed(1)}°`;
+        return `Γêá${angles.left.toFixed(1)}┬░`;
     } else if (angles.right !== null) {
-        return `∠${angles.right.toFixed(1)}°`;
+        return `Γêá${angles.right.toFixed(1)}┬░`;
     }
     return '';
 }
@@ -509,7 +506,7 @@ function resetDesign() {
         [1.5, 2.0, 6.0, 6.5]
     ].slice(0, state.numSpans);
 
-    state.numColRows = DOM.numColRowsPlan ? parseInt(DOM.numColRowsPlan.value) : 3;
+    state.numColRows = DOM.numColRows ? parseInt(DOM.numColRows.value) : 3;
     state.selectedRowIdx = 0;
     rebuildColumnLayout();
 
@@ -519,12 +516,11 @@ function resetDesign() {
     state.ductDiameter = 25; // Reset duct diameter to default (25mm)
     
     const defaultHeight = h - state.coverTop - 15; // sit just below top cover limit
-    const defaultSpacing = state.tendonSpacingY > 0 ? state.tendonSpacingY : 1.5; // match global Y spacing
     state.elevationTendonSets = [
-        { supportIdx: 0, direction: 'right', count: 4, spacing: defaultSpacing, offset: 0.20, height: defaultHeight },
-        { supportIdx: 1, direction: 'left', count: 3, spacing: defaultSpacing, offset: 0.20, height: defaultHeight },
-        { supportIdx: 1, direction: 'right', count: 4, spacing: defaultSpacing, offset: 0.20, height: defaultHeight },
-        { supportIdx: Math.min(2, state.numSpans), direction: 'left', count: 2, spacing: defaultSpacing, offset: 0.20, height: defaultHeight }
+        { supportIdx: 0, direction: 'right', count: 4, spacing: 0.20, offset: 0.20, height: defaultHeight },
+        { supportIdx: 1, direction: 'left', count: 3, spacing: 0.20, offset: 0.20, height: defaultHeight },
+        { supportIdx: 1, direction: 'right', count: 4, spacing: 0.20, offset: 0.20, height: defaultHeight },
+        { supportIdx: Math.min(2, state.numSpans), direction: 'left', count: 2, spacing: 0.20, offset: 0.20, height: defaultHeight }
     ];
     
     // Sync inputs with state
@@ -550,15 +546,6 @@ function syncColumnsFromSpanLengths() {
 
 // Sync values from UI inputs into State
 function syncInputsToState() {
-    // Sync Number of Column Rows between 2D Plan Layout and Elevation Heights dropdowns
-    if (DOM.numColRowsElev && DOM.numColRowsPlan) {
-        if (document.activeElement === DOM.numColRowsPlan) {
-            DOM.numColRowsElev.value = DOM.numColRowsPlan.value;
-        } else if (document.activeElement === DOM.numColRowsElev) {
-            DOM.numColRowsPlan.value = DOM.numColRowsElev.value;
-        }
-    }
-
     state.unit = DOM.unitSelect.value;
     state.numSpans = parseInt(DOM.numSpans.value);
     
@@ -596,14 +583,7 @@ function syncInputsToState() {
     state.frictionK = parseFloat(DOM.frictionK.value);
     state.anchorSet = toMm(parseFloat(DOM.anchorSet.value));
     state.tendonSpacingX = parseFloat(DOM.tendonSpacingX.value);
-    const prevTendonSpacingY = state.tendonSpacingY;
     state.tendonSpacingY = parseFloat(DOM.tendonSpacingY.value);
-    // Sync new Y spacing to all perpendicular tendon sets if value actually changed
-    if (!isNaN(state.tendonSpacingY) && state.tendonSpacingY !== prevTendonSpacingY && state.tendonSpacingY > 0) {
-        state.elevationTendonSets.forEach(set => {
-            set.spacing = state.tendonSpacingY;
-        });
-    }
     state.verticalExaggeration = parseFloat(DOM.verticalExaggeration.value);
 
     // Apply preserved support top-distances under new thickness
@@ -634,8 +614,8 @@ function syncInputsToState() {
     clampControlPoints();
 
     // Sync/re-initialize columns if geometry changes
-    if (DOM.numColRowsPlan) {
-        const val = parseInt(DOM.numColRowsPlan.value);
+    if (DOM.numColRows) {
+        const val = parseInt(DOM.numColRows.value);
         if (state.numColRows !== val) {
             state.numColRows = val;
             rebuildColumnLayout();
@@ -689,7 +669,7 @@ function syncInputsToState() {
                 supportIdx: 0,
                 direction: 'right',
                 count: 4,
-                spacing: state.tendonSpacingY > 0 ? state.tendonSpacingY : 1.5,
+                spacing: 0.20,
                 offset: 0.20,
                 height: defaultHeight
             });
@@ -705,9 +685,6 @@ function syncInputsToState() {
             set.height = Math.max(0, Math.min(state.slabThickness, set.height));
         });
     }
-
-    // Recalculate plan view X-tendon positions based on mode/width/spacing
-    updatePlanXTendons();
 }
 
 // Clamp control points heights to be within allowable cover envelopes
@@ -735,40 +712,36 @@ function clampControlPoints() {
 
 // Sync GUI elements values to match internal state variables
 function syncStateToInputs() {
-    if (DOM.unitSelect && document.activeElement !== DOM.unitSelect) DOM.unitSelect.value = state.unit;
-    if (DOM.numSpans && document.activeElement !== DOM.numSpans) DOM.numSpans.value = state.numSpans;
-    if (DOM.numColRowsPlan && document.activeElement !== DOM.numColRowsPlan) DOM.numColRowsPlan.value = state.numColRows;
-    if (DOM.numColRowsElev && document.activeElement !== DOM.numColRowsElev) DOM.numColRowsElev.value = state.numColRows;
-    if (DOM.slabThickness && document.activeElement !== DOM.slabThickness) DOM.slabThickness.value = fromMm(state.slabThickness);
-    if (DOM.slabWidth && document.activeElement !== DOM.slabWidth) DOM.slabWidth.value = state.slabWidth;
-    if (DOM.spanYLen && document.activeElement !== DOM.spanYLen) DOM.spanYLen.value = state.spanYLen;
-    if (DOM.concreteDensity && document.activeElement !== DOM.concreteDensity) DOM.concreteDensity.value = state.concreteDensity;
+    DOM.unitSelect.value = state.unit;
+    DOM.numSpans.value = state.numSpans;
+    DOM.slabThickness.value = fromMm(state.slabThickness);
+    DOM.slabWidth.value = state.slabWidth;
+    DOM.spanYLen.value = state.spanYLen;
+    DOM.concreteDensity.value = state.concreteDensity;
     
-    if (DOM.span1Len && document.activeElement !== DOM.span1Len) DOM.span1Len.value = state.spanLengths[0] || 8.0;
-    if (DOM.span2Len && state.spanLengths[1] && document.activeElement !== DOM.span2Len) DOM.span2Len.value = state.spanLengths[1];
-    if (DOM.span3Len && state.spanLengths[2] && document.activeElement !== DOM.span3Len) DOM.span3Len.value = state.spanLengths[2];
+    DOM.span1Len.value = state.spanLengths[0] || 8.0;
+    if (state.spanLengths[1]) DOM.span2Len.value = state.spanLengths[1];
+    if (state.spanLengths[2]) DOM.span3Len.value = state.spanLengths[2];
     
-    if (DOM.coverTop && document.activeElement !== DOM.coverTop) DOM.coverTop.value = fromMm(state.coverTop);
-    if (DOM.coverBottom && document.activeElement !== DOM.coverBottom) DOM.coverBottom.value = fromMm(state.coverBottom);
-    if (DOM.inflectionRatio && document.activeElement !== DOM.inflectionRatio) DOM.inflectionRatio.value = state.inflectionRatio;
-    if (DOM.inflectionRatioVal) DOM.inflectionRatioVal.innerText = state.inflectionRatio.toFixed(2);
+    DOM.coverTop.value = fromMm(state.coverTop);
+    DOM.coverBottom.value = fromMm(state.coverBottom);
+    DOM.inflectionRatio.value = state.inflectionRatio;
+    DOM.inflectionRatioVal.innerText = state.inflectionRatio.toFixed(2);
 
-    if (DOM.tendonForce && document.activeElement !== DOM.tendonForce) DOM.tendonForce.value = state.tendonForce;
-    if (DOM.tendonForceY && document.activeElement !== DOM.tendonForceY) DOM.tendonForceY.value = state.tendonForceY;
-    if (DOM.jackingEnd && document.activeElement !== DOM.jackingEnd) DOM.jackingEnd.value = state.jackingEnd;
-    if (DOM.frictionMu && document.activeElement !== DOM.frictionMu) DOM.frictionMu.value = state.frictionMu;
-    if (DOM.frictionK && document.activeElement !== DOM.frictionK) DOM.frictionK.value = state.frictionK;
-    if (DOM.anchorSet && document.activeElement !== DOM.anchorSet) DOM.anchorSet.value = fromMm(state.anchorSet);
-    if (DOM.tendonSpacingX && document.activeElement !== DOM.tendonSpacingX) DOM.tendonSpacingX.value = state.tendonSpacingX;
-    if (DOM.tendonSpacingY && document.activeElement !== DOM.tendonSpacingY) DOM.tendonSpacingY.value = state.tendonSpacingY;
-    if (DOM.verticalExaggeration && document.activeElement !== DOM.verticalExaggeration) DOM.verticalExaggeration.value = state.verticalExaggeration;
+    DOM.tendonForce.value = state.tendonForce;
+    DOM.tendonForceY.value = state.tendonForceY;
+    DOM.jackingEnd.value = state.jackingEnd;
+    DOM.frictionMu.value = state.frictionMu;
+    DOM.frictionK.value = state.frictionK;
+    DOM.anchorSet.value = fromMm(state.anchorSet);
+    DOM.tendonSpacingX.value = state.tendonSpacingX;
+    DOM.tendonSpacingY.value = state.tendonSpacingY;
+    DOM.verticalExaggeration.value = state.verticalExaggeration;
 
-    if (DOM.minSupportAngle && document.activeElement !== DOM.minSupportAngle) DOM.minSupportAngle.value = state.minSupportAngle;
-    if (DOM.maxSupportAngle && document.activeElement !== DOM.maxSupportAngle) DOM.maxSupportAngle.value = state.maxSupportAngle;
-    if (DOM.numTendonSets && document.activeElement !== DOM.numTendonSets) DOM.numTendonSets.value = state.elevationTendonSets.length;
-    if (DOM.ductDiameter && document.activeElement !== DOM.ductDiameter) {
-        DOM.ductDiameter.value = fromMm(state.ductDiameter).toFixed(state.unit === 'cm' ? 1 : 0);
-    }
+    if (DOM.minSupportAngle) DOM.minSupportAngle.value = state.minSupportAngle;
+    if (DOM.maxSupportAngle) DOM.maxSupportAngle.value = state.maxSupportAngle;
+    if (DOM.numTendonSets) DOM.numTendonSets.value = state.elevationTendonSets.length;
+    if (DOM.ductDiameter) DOM.ductDiameter.value = fromMm(state.ductDiameter).toFixed(state.unit === 'cm' ? 1 : 0);
 
     // Toggle span length containers depending on count
     DOM.span2Container.style.display = state.numSpans >= 2 ? 'block' : 'none';
@@ -1245,56 +1218,6 @@ function renderVisualizer() {
     
     svg.appendChild(coverLimitsG);
 
-    // 4.5 Dimension annotations (slab thickness h, coverTop, coverBottom) on right side
-    {
-        const dimX = scaleX(totalLength) + 8;
-        const svgEl = (tag) => document.createElementNS('http://www.w3.org/2000/svg', tag);
-        const mkLine = (x1, y1, x2, y2, color) => {
-            const l = svgEl('line');
-            l.setAttribute('x1', x1); l.setAttribute('y1', y1);
-            l.setAttribute('x2', x2); l.setAttribute('y2', y2);
-            l.setAttribute('stroke', color || 'rgba(255,255,255,0.22)');
-            l.setAttribute('stroke-width', '1');
-            return l;
-        };
-        const mkTxt = (x, y, txt, color) => {
-            const t = svgEl('text');
-            t.setAttribute('x', x); t.setAttribute('y', y);
-            t.setAttribute('fill', color || 'rgba(255,255,255,0.5)');
-            t.setAttribute('font-size', '8px');
-            t.setAttribute('font-family', 'JetBrains Mono, monospace');
-            t.setAttribute('text-anchor', 'start');
-            t.textContent = txt;
-            return t;
-        };
-        const dimG = svgEl('g');
-        dimG.setAttribute('class', 'svg-dim-annotations');
-
-        // Slab thickness: slabTopY -> slabBottomY
-        const hVal = fromMm(hSlab).toFixed(state.unit === 'cm' ? 0 : 0);
-        dimG.appendChild(mkLine(dimX, slabTopY, dimX + 20, slabTopY));
-        dimG.appendChild(mkLine(dimX, slabBottomY, dimX + 20, slabBottomY));
-        dimG.appendChild(mkLine(dimX + 10, slabTopY, dimX + 10, slabBottomY));
-        dimG.appendChild(mkTxt(dimX + 13, (slabTopY + slabBottomY) / 2 + 3, `h=${hVal}${state.unit}`, '#94a3b8'));
-
-        // Top cover: slabTopY -> limitTopY
-        const ctVal = fromMm(state.coverTop).toFixed(state.unit === 'cm' ? 1 : 0);
-        dimG.appendChild(mkLine(dimX + 26, slabTopY, dimX + 46, slabTopY));
-        dimG.appendChild(mkLine(dimX + 26, limitTopY, dimX + 46, limitTopY));
-        dimG.appendChild(mkLine(dimX + 36, slabTopY, dimX + 36, limitTopY));
-        dimG.appendChild(mkTxt(dimX + 39, (slabTopY + limitTopY) / 2 + 3, `c=${ctVal}`, '#f87171'));
-
-        // Bottom cover: limitBottomY -> slabBottomY
-        const cbVal = fromMm(state.coverBottom).toFixed(state.unit === 'cm' ? 1 : 0);
-        dimG.appendChild(mkLine(dimX + 26, limitBottomY, dimX + 46, limitBottomY));
-        dimG.appendChild(mkLine(dimX + 26, slabBottomY, dimX + 46, slabBottomY));
-        dimG.appendChild(mkLine(dimX + 36, limitBottomY, dimX + 36, slabBottomY));
-        dimG.appendChild(mkTxt(dimX + 39, (limitBottomY + slabBottomY) / 2 + 3, `c=${cbVal}`, '#f87171'));
-
-        svg.appendChild(dimG);
-    }
-
-
     // Render other sections' tendon profiles in the background as faint dashed lines
     for (let s = 0; s < 2 * state.numColRows; s++) {
         if (s === state.selectedRowIdx) continue;
@@ -1674,13 +1597,12 @@ function drag(e) {
                 let minX = 0;
                 let maxX = state.spanLengths.reduce((a, b) => a + b, 0);
                 
-                const activeRowIdx = Math.floor(state.selectedRowIdx / 2);
                 if (suppIdx > 0) {
-                    const prevCol = state.planColumns.find(c => c.id === `col-${suppIdx-1}-row${activeRowIdx}`);
+                    const prevCol = state.planColumns.find(c => c.id === `col-${suppIdx-1}-top`);
                     if (prevCol) minX = prevCol.x + 3.0; // min 3.0m span
                 }
                 if (suppIdx < state.numSpans) {
-                    const nextCol = state.planColumns.find(c => c.id === `col-${suppIdx+1}-row${activeRowIdx}`);
+                    const nextCol = state.planColumns.find(c => c.id === `col-${suppIdx+1}-top`);
                     if (nextCol) maxX = nextCol.x - 3.0; // min 3.0m span
                 }
                 
@@ -1691,12 +1613,13 @@ function drag(e) {
                 }
                 col.y = Math.max(0, Math.min(totalWidth, y));
                 
-                // Sync all columns in this set (same support index) to match this support line X
-                state.planColumns.forEach(c => {
-                    if (c.id.startsWith(`col-${suppIdx}-`)) {
-                        c.x = col.x;
-                    }
-                });
+                // Sync the other column in set
+                const suffix = id.endsWith('-top') ? '-bottom' : '-top';
+                const otherId = id.substring(0, id.lastIndexOf('-')) + suffix;
+                const otherCol = state.planColumns.find(c => c.id === otherId);
+                if (otherCol) {
+                    otherCol.x = col.x;
+                }
                 
                 syncSpanLengthsFromColumns();
             }
@@ -1824,7 +1747,6 @@ function hideTooltip() {
 // Render the Friction Loss Chart (using HTML5 Canvas)
 function renderLossChart() {
     const canvas = DOM.lossChart;
-    if (!canvas) return;
     const ctx = canvas.getContext('2d');
     
     // Clear canvas
@@ -1941,9 +1863,9 @@ function renderLossChart() {
     ctx.fill();
 
     // Update Stat bubbles in HTML card header
-    if (DOM.minForceVal) DOM.minForceVal.textContent = `${minP.toFixed(0)} kN`;
+    DOM.minForceVal.textContent = `${minP.toFixed(0)} kN`;
     const maxLossPercent = ((P0 - minP) / P0) * 100;
-    if (DOM.maxLossVal) DOM.maxLossVal.textContent = `${maxLossPercent.toFixed(1)}%`;
+    DOM.maxLossVal.textContent = `${maxLossPercent.toFixed(1)}%`;
 }
 
 // Compute Design checks & details table
@@ -2082,8 +2004,7 @@ function updateChecksAndOutputs() {
 
     // 3. Update Coordinates Table
     DOM.coordsTable.innerHTML = '';
-    const tblIncrementEl = document.getElementById('table-increment');
-    const tblIncrement = tblIncrementEl ? parseFloat(tblIncrementEl.value) || 0.5 : 0.5; // meters
+    const tblIncrement = 0.50; // meters
     let tblX = 0;
     const totalLength = state.spanLengths.reduce((a, b) => a + b, 0);
     
@@ -2130,12 +2051,12 @@ function updateChecksAndOutputs() {
         const angles = getSupportAngles(i);
         if (angles.left !== null) {
             if (angles.left < state.minSupportAngle - 0.001 || angles.left > state.maxSupportAngle + 0.001) {
-                supportViolations.push(`S${i} Left (${angles.left.toFixed(1)}°)`);
+                supportViolations.push(`S${i} Left (${angles.left.toFixed(1)}┬░)`);
             }
         }
         if (angles.right !== null) {
             if (angles.right < state.minSupportAngle - 0.001 || angles.right > state.maxSupportAngle + 0.001) {
-                supportViolations.push(`S${i} Right (${angles.right.toFixed(1)}°)`);
+                supportViolations.push(`S${i} Right (${angles.right.toFixed(1)}┬░)`);
             }
         }
     }
@@ -2146,11 +2067,11 @@ function updateChecksAndOutputs() {
         if (supportViolations.length > 0) {
             saCheck.className = 'check-item danger';
             saCheck.querySelector('.check-status-icon').innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
-            saDesc.innerHTML = `<span style="color: #ef4444; font-weight:600;">Slope Violation!</span> Out of bounds at: ${supportViolations.join(', ')} (Limits: ${state.minSupportAngle.toFixed(1)}° - ${state.maxSupportAngle.toFixed(1)}°).`;
+            saDesc.innerHTML = `<span style="color: #ef4444; font-weight:600;">Slope Violation!</span> Out of bounds at: ${supportViolations.join(', ')} (Limits: ${state.minSupportAngle.toFixed(1)}┬░ - ${state.maxSupportAngle.toFixed(1)}┬░).`;
         } else {
             saCheck.className = 'check-item success';
             saCheck.querySelector('.check-status-icon').innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
-            saDesc.textContent = `All support slope angles are within specified limits (${state.minSupportAngle.toFixed(1)}° - ${state.maxSupportAngle.toFixed(1)}°).`;
+            saDesc.textContent = `All support slope angles are within specified limits (${state.minSupportAngle.toFixed(1)}┬░ - ${state.maxSupportAngle.toFixed(1)}┬░).`;
         }
     }
 
@@ -2229,7 +2150,6 @@ function calculateAndRender() {
     renderVisualizer();
     renderLossChart();
     updateSidebarNodeInputs();
-    updateActiveColumnsData();
     updateChecksAndOutputs();
     syncStateToInputs(); // Ensure sidebar inputs are synced with interactive changes
     renderSectionSelectTabs();
@@ -2435,7 +2355,6 @@ function renderNodeInputs() {
         row.appendChild(lockBtn);
         container.appendChild(row);
     }
-    renderActiveColumnsData();
 }
 
 // Render or update the sidebar numeric inputs based on current span configuration
@@ -2492,173 +2411,6 @@ function updateSidebarNodeInputs() {
                     : `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>`;
             }
         }
-    }
-}
-
-// Render columns coordinate data inside the active section heights panel
-function renderActiveColumnsData() {
-    const container = document.getElementById('active-columns-data-container');
-    if (!container) return;
-    
-    container.innerHTML = '';
-    
-    const activeRowIdx = Math.floor(state.selectedRowIdx / 2);
-    
-    const title = document.createElement('h3');
-    title.style.fontSize = '0.75rem';
-    title.style.color = '#a7f3d0';
-    title.style.marginTop = '0.5rem';
-    title.style.marginBottom = '0.25rem';
-    title.style.display = 'flex';
-    title.style.justifyContent = 'space-between';
-    title.style.alignItems = 'center';
-    title.innerHTML = `<span>Section Column Coordinates (m)</span> <span style="font-size:0.65rem; color:var(--color-primary-light); font-weight:600;">(Grid Line ${activeRowIdx + 1})</span>`;
-    container.appendChild(title);
-    
-    // Add Header Row
-    const headerRow = document.createElement('div');
-    headerRow.style.display = 'grid';
-    headerRow.style.gridTemplateColumns = '50px 1fr 1fr';
-    headerRow.style.gap = '0.4rem';
-    headerRow.style.fontSize = '0.7rem';
-    headerRow.style.fontWeight = '700';
-    headerRow.style.color = 'var(--text-secondary)';
-    headerRow.style.textTransform = 'uppercase';
-    headerRow.style.marginBottom = '0.25rem';
-    headerRow.style.borderBottom = '1px solid var(--border-color)';
-    headerRow.style.paddingBottom = '0.2rem';
-    
-    const labelHeader = document.createElement('div');
-    labelHeader.textContent = 'Col';
-    const xHeader = document.createElement('div');
-    xHeader.textContent = 'X (m)';
-    const yHeader = document.createElement('div');
-    yHeader.textContent = 'Y (m)';
-    
-    headerRow.appendChild(labelHeader);
-    headerRow.appendChild(xHeader);
-    headerRow.appendChild(yHeader);
-    container.appendChild(headerRow);
-    
-    const rowCols = state.planColumns.filter(c => c.id.endsWith(`-row${activeRowIdx}`));
-    
-    rowCols.forEach((col) => {
-        const row = document.createElement('div');
-        row.style.display = 'grid';
-        row.style.gridTemplateColumns = '50px 1fr 1fr';
-        row.style.gap = '0.4rem';
-        row.style.alignItems = 'center';
-        row.style.marginBottom = '0.2rem';
-        
-        const label = document.createElement('div');
-        label.style.fontSize = '0.7rem';
-        label.style.fontWeight = '600';
-        label.style.color = 'var(--text-primary)';
-        
-        const suppIdx = parseInt(col.id.split('-')[1]);
-        const prefix = getColumnPrefix(suppIdx, state.numSpans + 1);
-        label.textContent = `${prefix}${activeRowIdx + 1}`;
-        
-        const xInput = document.createElement('input');
-        xInput.type = 'number';
-        xInput.className = 'form-control form-control-sm';
-        xInput.id = `input-elev-col-x-${col.id}`;
-        xInput.value = col.x.toFixed(2);
-        xInput.step = '0.1';
-        xInput.placeholder = 'X';
-        if (suppIdx === 0) xInput.disabled = true;
-        
-        xInput.addEventListener('change', () => {
-            const totalL = state.spanLengths.reduce((a, b) => a + b, 0);
-            let val = parseFloat(xInput.value) || 0;
-            
-            let minX = 0;
-            let maxX = totalL;
-            if (suppIdx > 0) {
-                const prevCol = state.planColumns.find(c => c.id === `col-${suppIdx-1}-row${activeRowIdx}`);
-                if (prevCol) minX = prevCol.x + 3.0;
-            }
-            if (suppIdx < state.numSpans) {
-                const nextCol = state.planColumns.find(c => c.id === `col-${suppIdx+1}-row${activeRowIdx}`);
-                if (nextCol) maxX = nextCol.x - 3.0;
-            }
-            
-            val = Math.max(minX, Math.min(maxX, val));
-            col.x = val;
-            xInput.value = val.toFixed(2);
-            
-            state.planColumns.forEach(c => {
-                if (c.id.startsWith(`col-${suppIdx}-`)) {
-                    c.x = val;
-                }
-            });
-            
-            syncSpanLengthsFromColumns();
-            calculateAndRender();
-        });
-        
-        const yInput = document.createElement('input');
-        yInput.type = 'number';
-        yInput.className = 'form-control form-control-sm';
-        yInput.id = `input-elev-col-y-${col.id}`;
-        yInput.value = col.y.toFixed(2);
-        yInput.step = '0.1';
-        yInput.placeholder = 'Y';
-        yInput.addEventListener('change', () => {
-            const totalW = state.slabWidth;
-            let val = parseFloat(yInput.value) || 0;
-            val = Math.max(0, Math.min(totalW, val));
-            col.y = val;
-            yInput.value = val.toFixed(2);
-            calculateAndRender();
-        });
-        
-        row.appendChild(label);
-        row.appendChild(xInput);
-        row.appendChild(yInput);
-        container.appendChild(row);
-    });
-}
-
-function updateActiveColumnsData() {
-    const container = document.getElementById('active-columns-data-container');
-    if (!container) return;
-    
-    const activeRowIdx = Math.floor(state.selectedRowIdx / 2);
-    const rowCols = state.planColumns.filter(c => c.id.endsWith(`-row${activeRowIdx}`));
-    
-    const expectedColCount = rowCols.length;
-    const currentColCount = container.querySelectorAll('input').length / 2;
-    
-    const firstCol = rowCols[0];
-    const matchesRow = firstCol ? !!document.getElementById(`input-elev-col-x-${firstCol.id}`) : true;
-    
-    if (expectedColCount !== currentColCount || !matchesRow) {
-        renderActiveColumnsData();
-    } else {
-        // Update section title grid label
-        const titleSpan = container.querySelector('h3 span:last-child');
-        if (titleSpan) {
-            titleSpan.textContent = `(Grid Line ${activeRowIdx + 1})`;
-        }
-        
-        rowCols.forEach((col) => {
-            const suppIdx = parseInt(col.id.split('-')[1]);
-            const labelDiv = container.querySelector(`input[id="input-elev-col-x-${col.id}"]`)?.parentElement?.firstElementChild;
-            if (labelDiv) {
-                const prefix = getColumnPrefix(suppIdx, state.numSpans + 1);
-                labelDiv.textContent = `${prefix}${activeRowIdx + 1}`;
-            }
-            
-            const xIn = document.getElementById(`input-elev-col-x-${col.id}`);
-            if (xIn && document.activeElement !== xIn) {
-                xIn.value = col.x.toFixed(2);
-            }
-            const yIn = document.getElementById(`input-elev-col-y-${col.id}`);
-            if (yIn && document.activeElement !== yIn) {
-                yIn.value = col.y.toFixed(2);
-            }
-        });
     }
 }
 
@@ -3114,181 +2866,66 @@ function renderSidebarPlanInputs() {
 
     // 2. Render Column Inputs
     columnsContainer.innerHTML = '';
-    
-    // Add Header Row
-    const headerRow = document.createElement('div');
-    headerRow.style.display = 'grid';
-    headerRow.style.gridTemplateColumns = '50px 1fr 1fr';
-    headerRow.style.gap = '0.4rem';
-    headerRow.style.fontSize = '0.7rem';
-    headerRow.style.fontWeight = '700';
-    headerRow.style.color = 'var(--text-secondary)';
-    headerRow.style.textTransform = 'uppercase';
-    headerRow.style.letterSpacing = '0.05em';
-    headerRow.style.marginBottom = '0.4rem';
-    headerRow.style.borderBottom = '1px solid var(--border-color)';
-    headerRow.style.paddingBottom = '0.25rem';
-    
-    const labelHeader = document.createElement('div');
-    labelHeader.textContent = 'Col';
-    
-    const xHeader = document.createElement('div');
-    xHeader.textContent = 'X (m)';
-    
-    const yHeader = document.createElement('div');
-    yHeader.textContent = 'Y (m)';
-    
-    headerRow.appendChild(labelHeader);
-    headerRow.appendChild(xHeader);
-    headerRow.appendChild(yHeader);
-    columnsContainer.appendChild(headerRow);
-
-    // Group columns by row index
-    const columnsByRow = {};
     state.planColumns.forEach((col) => {
+        const row = document.createElement('div');
+        row.style.display = 'grid';
+        row.style.gridTemplateColumns = '1.2fr 1fr 1fr';
+        row.style.gap = '0.4rem';
+        row.style.alignItems = 'center';
+        row.style.marginBottom = '0.2rem';
+        
+        const label = document.createElement('div');
+        label.style.fontSize = '0.65rem';
+        label.style.fontWeight = '600';
+        label.style.color = 'var(--text-secondary)';
+        
+        const suppIdx = parseInt(col.id.split('-')[1]);
         const rowIdx = parseInt(col.id.split('-')[2].replace('row', ''));
-        if (!columnsByRow[rowIdx]) {
-            columnsByRow[rowIdx] = [];
-        }
-        columnsByRow[rowIdx].push(col);
-    });
-
-    // Render grouped columns
-    Object.keys(columnsByRow).sort((a, b) => a - b).forEach((rowKey) => {
-        const rowIdx = parseInt(rowKey);
+        const prefix = getColumnPrefix(suppIdx, state.numSpans + 1);
+        label.textContent = `${prefix}${rowIdx + 1}`;
         
-        // Add a row separator/label
-        const groupHeader = document.createElement('div');
-        groupHeader.style.fontSize = '0.75rem';
-        groupHeader.style.fontWeight = '700';
-        groupHeader.style.color = 'var(--color-primary-light)';
-        groupHeader.style.marginTop = '0.8rem';
-        groupHeader.style.marginBottom = '0.4rem';
-        groupHeader.style.display = 'flex';
-        groupHeader.style.alignItems = 'center';
-        groupHeader.style.gap = '0.5rem';
-        
-        const groupTitle = document.createElement('span');
-        groupTitle.textContent = `Grid Line ${rowIdx + 1}`;
-        
-        const groupLine = document.createElement('span');
-        groupLine.style.flex = '1';
-        groupLine.style.borderBottom = '1px dashed var(--border-color)';
-        groupLine.style.opacity = '0.4';
-        
-        groupHeader.appendChild(groupTitle);
-        groupHeader.appendChild(groupLine);
-        columnsContainer.appendChild(groupHeader);
-        
-        columnsByRow[rowKey].forEach((col) => {
-            const row = document.createElement('div');
-            row.style.display = 'grid';
-            row.style.gridTemplateColumns = '50px 1fr 1fr';
-            row.style.gap = '0.4rem';
-            row.style.alignItems = 'center';
-            row.style.marginBottom = '0.25rem';
-            
-            const label = document.createElement('div');
-            label.style.fontSize = '0.7rem';
-            label.style.fontWeight = '600';
-            label.style.color = 'var(--text-primary)';
-            
-            const suppIdx = parseInt(col.id.split('-')[1]);
-            const prefix = getColumnPrefix(suppIdx, state.numSpans + 1);
-            label.textContent = `${prefix}${rowIdx + 1}`;
-            
-            const xInput = document.createElement('input');
-            xInput.type = 'number';
-            xInput.className = 'form-control form-control-sm';
-            xInput.id = `input-col-x-${col.id}`;
-            xInput.value = col.x.toFixed(2);
-            xInput.step = '0.1';
-            xInput.placeholder = 'X';
-            xInput.addEventListener('change', () => {
-                const totalL = state.spanLengths.reduce((a, b) => a + b, 0);
-                let val = parseFloat(xInput.value) || 0;
-                val = Math.max(0, Math.min(totalL, val));
-                col.x = val;
-                xInput.value = val.toFixed(2);
-                calculateAndRender();
-            });
-            
-            const yInput = document.createElement('input');
-            yInput.type = 'number';
-            yInput.className = 'form-control form-control-sm';
-            yInput.id = `input-col-y-${col.id}`;
-            yInput.value = col.y.toFixed(2);
-            yInput.step = '0.1';
-            yInput.placeholder = 'Y';
-            yInput.addEventListener('change', () => {
-                const totalW = state.slabWidth;
-                let val = parseFloat(yInput.value) || 0;
-                val = Math.max(0, Math.min(totalW, val));
-                col.y = val;
-                yInput.value = val.toFixed(2);
-                calculateAndRender();
-            });
-            
-            row.appendChild(label);
-            row.appendChild(xInput);
-            row.appendChild(yInput);
-            columnsContainer.appendChild(row);
+        const xInput = document.createElement('input');
+        xInput.type = 'number';
+        xInput.className = 'form-control form-control-sm';
+        xInput.id = `input-col-x-${col.id}`;
+        xInput.value = col.x.toFixed(2);
+        xInput.step = '0.1';
+        xInput.placeholder = 'X';
+        xInput.addEventListener('change', () => {
+            const totalL = state.spanLengths.reduce((a, b) => a + b, 0);
+            let val = parseFloat(xInput.value) || 0;
+            val = Math.max(0, Math.min(totalL, val));
+            col.x = val;
+            xInput.value = val.toFixed(2);
+            calculateAndRender();
         });
+        
+        const yInput = document.createElement('input');
+        yInput.type = 'number';
+        yInput.className = 'form-control form-control-sm';
+        yInput.id = `input-col-y-${col.id}`;
+        yInput.value = col.y.toFixed(2);
+        yInput.step = '0.1';
+        yInput.placeholder = 'Y';
+        yInput.addEventListener('change', () => {
+            const totalW = state.slabWidth;
+            let val = parseFloat(yInput.value) || 0;
+            val = Math.max(0, Math.min(totalW, val));
+            col.y = val;
+            yInput.value = val.toFixed(2);
+            calculateAndRender();
+        });
+        
+        row.appendChild(label);
+        row.appendChild(xInput);
+        row.appendChild(yInput);
+        columnsContainer.appendChild(row);
     });
-}
-
-// Calculate plan layout X-tendon positions based on spacing or custom input
-function updatePlanXTendons() {
-    const modeSelect = document.getElementById('plan-x-tendons-mode');
-    const spacingInput = document.getElementById('input-plan-x-spacing');
-    const xInput = document.getElementById('input-plan-x-tendons');
-    
-    if (modeSelect) {
-        state.planXTendonsMode = modeSelect.value;
-    }
-    
-    if (state.planXTendonsMode === 'spacing') {
-        if (spacingInput) {
-            state.planXTendonsSpacing = parseFloat(spacingInput.value) || 1.5;
-        }
-        const spacing = state.planXTendonsSpacing;
-        const totalW = state.slabWidth;
-        const list = [];
-        for (let y = spacing; y < totalW - 0.0001; y += spacing) {
-            list.push(parseFloat(y.toFixed(2)));
-        }
-        state.planXTendons = list;
-    } else {
-        if (xInput) {
-            const vals = xInput.value.split(',')
-                .map(v => parseFloat(v.trim()))
-                .filter(v => !isNaN(v) && v >= 0 && v <= state.slabWidth);
-            state.planXTendons = vals.sort((a, b) => a - b);
-        }
-    }
 }
 
 // Sync values of Plan Layout UI inputs with current state variables
 function updateSidebarPlanInputs() {
-    const modeSelect = document.getElementById('plan-x-tendons-mode');
-    const spacingInput = document.getElementById('input-plan-x-spacing');
     const xInput = document.getElementById('input-plan-x-tendons');
-    const spacingGroup = document.getElementById('group-plan-x-spacing');
-    const positionsGroup = document.getElementById('group-plan-x-positions');
-
-    if (modeSelect) modeSelect.value = state.planXTendonsMode;
-    if (spacingInput && document.activeElement !== spacingInput) {
-        spacingInput.value = state.planXTendonsSpacing;
-    }
-    
-    if (state.planXTendonsMode === 'spacing') {
-        if (spacingGroup) spacingGroup.style.display = 'block';
-        if (positionsGroup) positionsGroup.style.display = 'none';
-    } else {
-        if (spacingGroup) spacingGroup.style.display = 'none';
-        if (positionsGroup) positionsGroup.style.display = 'block';
-    }
-
     if (xInput && document.activeElement !== xInput) {
         xInput.value = state.planXTendons.join(', ');
     }
@@ -3330,13 +2967,13 @@ function setupEventListeners() {
 
     // Parameter Inputs
     const inputs = [
-        DOM.numSpans, DOM.numColRowsPlan, DOM.numColRowsElev, DOM.slabThickness, DOM.slabWidth, DOM.spanYLen, DOM.concreteDensity,
+        DOM.numSpans, DOM.numColRows, DOM.slabThickness, DOM.slabWidth, DOM.spanYLen, DOM.concreteDensity,
         DOM.span1Len, DOM.span2Len, DOM.span3Len,
         DOM.coverTop, DOM.coverBottom, DOM.inflectionRatio,
         DOM.tendonForce, DOM.tendonForceY, DOM.jackingEnd, DOM.frictionMu, DOM.frictionK,
         DOM.anchorSet, DOM.tendonSpacingX, DOM.tendonSpacingY, DOM.verticalExaggeration,
-        DOM.minSupportAngle, DOM.maxSupportAngle, DOM.numTendonSets, DOM.ductDiameter
-    ].filter(Boolean);
+        DOM.minSupportAngle, DOM.maxSupportAngle, DOM.numTendonSets
+    ];
     
     inputs.forEach(input => {
         input.addEventListener('input', () => {
@@ -3347,9 +2984,6 @@ function setupEventListeners() {
             syncInputsToState();
             calculateAndRender();
         });
-        input.addEventListener('blur', () => {
-            syncStateToInputs();
-        });
     });
 
     // Reset button
@@ -3358,201 +2992,21 @@ function setupEventListeners() {
         calculateAndRender();
     });
 
-    // Export CSV (header toolbar + in-card table button)
+    // Export CSV
     DOM.btnExportCsv.addEventListener('click', exportCSV);
-    const btnExportCsvTable = document.getElementById('btn-export-csv-table');
-    if (btnExportCsvTable) btnExportCsvTable.addEventListener('click', exportCSV);
-
-    // In-card AutoCAD export button (opens modal)
-    const btnExportAutocadTable = document.getElementById('btn-export-autocad-table');
-    if (btnExportAutocadTable) {
-        btnExportAutocadTable.addEventListener('click', () => {
-            if (DOM.autocadModal) DOM.autocadModal.classList.remove('hidden');
-        });
-    }
-
-    // Table Increment Selector
-    const tableIncrementEl = document.getElementById('table-increment');
-    if (tableIncrementEl) {
-        tableIncrementEl.addEventListener('change', () => {
-            calculateAndRender();
-        });
-    }
 
     // Custom Plan View Tendons configuration
     const planXTendonsInput = document.getElementById('input-plan-x-tendons');
     if (planXTendonsInput) {
         planXTendonsInput.addEventListener('change', () => {
-            updatePlanXTendons();
-            updateSidebarPlanInputs();
+            const vals = planXTendonsInput.value.split(',')
+                .map(v => parseFloat(v.trim()))
+                .filter(v => !isNaN(v) && v >= 0 && v <= state.slabWidth);
+            state.planXTendons = vals.sort((a, b) => a - b);
+            planXTendonsInput.value = state.planXTendons.join(', ');
             calculateAndRender();
         });
     }
-
-    const planXTendonsMode = document.getElementById('plan-x-tendons-mode');
-    if (planXTendonsMode) {
-        planXTendonsMode.addEventListener('change', () => {
-            updatePlanXTendons();
-            updateSidebarPlanInputs();
-            calculateAndRender();
-        });
-    }
-
-    const planXSpacingInput = document.getElementById('input-plan-x-spacing');
-    if (planXSpacingInput) {
-        planXSpacingInput.addEventListener('input', () => {
-            updatePlanXTendons();
-            updateSidebarPlanInputs();
-            calculateAndRender();
-        });
-        planXSpacingInput.addEventListener('change', () => {
-            updatePlanXTendons();
-            updateSidebarPlanInputs();
-            calculateAndRender();
-        });
-    }
-
-    // Sidebar Toggle & Collapse
-    function toggleSidebar() {
-        const container = document.querySelector('.app-container');
-        if (container) {
-            container.classList.toggle('sidebar-collapsed');
-            
-            // Dispatch resize event to force canvas/SVG recalculation in the newly scaled space
-            setTimeout(() => {
-                window.dispatchEvent(new Event('resize'));
-            }, 310);
-        }
-    }
-
-    const toggleBtn = document.getElementById('btn-toggle-sidebar');
-    if (toggleBtn) {
-        toggleBtn.addEventListener('click', toggleSidebar);
-    }
-
-    const maximizeViewBtn = document.getElementById('btn-maximize-view');
-    if (maximizeViewBtn) {
-        maximizeViewBtn.addEventListener('click', toggleSidebar);
-    }
-
-    // Sidebar Resize Dragger
-    const resizeHandle = document.getElementById('sidebar-resize-handle');
-    const parametersPanel = document.querySelector('.parameters-panel');
-    const appContainer = document.querySelector('.app-container');
-
-    if (resizeHandle && parametersPanel && appContainer) {
-        let isResizing = false;
-        let startX = 0;
-        let startWidth = 0;
-
-        resizeHandle.addEventListener('mousedown', (e) => {
-            if (appContainer.classList.contains('sidebar-collapsed')) return;
-
-            isResizing = true;
-            startX = e.clientX;
-            startWidth = parametersPanel.offsetWidth;
-
-            resizeHandle.classList.add('active');
-            document.body.style.cursor = 'col-resize';
-            document.body.style.userSelect = 'none';
-            e.preventDefault();
-        });
-
-        window.addEventListener('mousemove', (e) => {
-            if (!isResizing) return;
-
-            const dx = e.clientX - startX;
-            let newWidth = startWidth + dx;
-
-            // Clamp between 240px and 600px
-            newWidth = Math.max(240, Math.min(600, newWidth));
-
-            // Update parameters-panel width and CSS custom property
-            parametersPanel.style.width = `${newWidth}px`;
-            document.documentElement.style.setProperty('--sidebar-width', `${newWidth}px`);
-
-            // Instantly trigger resize event to re-draw canvas/charts
-            window.dispatchEvent(new Event('resize'));
-        });
-
-        window.addEventListener('mouseup', () => {
-            if (!isResizing) return;
-            isResizing = false;
-            resizeHandle.classList.remove('active');
-            document.body.style.cursor = '';
-            document.body.style.userSelect = '';
-        });
-
-        // Double-click to reset sidebar width to default 320px
-        resizeHandle.addEventListener('dblclick', () => {
-            if (appContainer.classList.contains('sidebar-collapsed')) return;
-            parametersPanel.style.width = '320px';
-            document.documentElement.style.setProperty('--sidebar-width', '320px');
-            window.dispatchEvent(new Event('resize'));
-        });
-    }
-
-    // Collapsible Dashboard Cards
-    document.querySelectorAll('.btn-card-collapse').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            const card = btn.closest('.display-card');
-            if (card) {
-                card.classList.toggle('card-collapsed');
-                
-                // If it's the chart card or visualizer card, trigger resize to re-scale drawing areas
-                if (card.classList.contains('chart-card') || card.classList.contains('visualizer-card')) {
-                    setTimeout(() => {
-                        window.dispatchEvent(new Event('resize'));
-                    }, 100);
-                }
-            }
-        });
-    });
-
-    // --- Req 4: Friction Loss Chart - Collapse by default, auto-expand on param change ---
-    const frictionChartCard = document.querySelector('.chart-card');
-    if (frictionChartCard) {
-        // Start collapsed
-        frictionChartCard.classList.add('card-collapsed');
-
-        // Auto-expand when friction/force parameters change
-        const frictionTriggerIds = [
-            'friction-mu', 'friction-k', 'anchor-set', 'jacking-end',
-            'tendon-force', 'tendon-force-y', 'num-spans',
-            'span-1-len', 'span-2-len', 'span-3-len'
-        ];
-        frictionTriggerIds.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) {
-                el.addEventListener('change', () => {
-                    if (frictionChartCard.classList.contains('card-collapsed')) {
-                        frictionChartCard.classList.remove('card-collapsed');
-                        frictionChartCard.classList.add('friction-auto-expanded');
-                        setTimeout(() => frictionChartCard.classList.remove('friction-auto-expanded'), 3500);
-                    }
-                });
-            }
-        });
-    }
-
-    // --- Req 1: Parameter Help Modal ---
-    const paramHelpModal = document.getElementById('param-help-modal');
-    const btnCloseParamHelp = document.getElementById('btn-close-param-help');
-    if (btnCloseParamHelp && paramHelpModal) {
-        btnCloseParamHelp.addEventListener('click', () => paramHelpModal.classList.add('hidden'));
-        paramHelpModal.addEventListener('click', (e) => {
-            if (e.target === paramHelpModal) paramHelpModal.classList.add('hidden');
-        });
-    }
-
-    // Wire up all (?) help buttons
-    document.querySelectorAll('.btn-param-help').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const key = btn.dataset.helpKey;
-            showParamHelp(key);
-        });
-    });
 
     // Export SVG
     DOM.btnExportSvg.addEventListener('click', exportSVG);
@@ -4198,10 +3652,8 @@ function exportDXF() {
 
     let dxf = '';
 
-    // HEADER SECTION specifying DXF R12 (AC1009) and drawing units
-    const insUnits = cadUnit === 'mm' ? 4 : cadUnit === 'cm' ? 5 : 6; // 4=mm, 5=cm, 6=m
-    dxf += f(0, 'SECTION') + f(2, 'HEADER') + f(9, '$ACADVER') + f(1, 'AC1009') +
-           f(9, '$INSUNITS') + f(70, insUnits) + f(0, 'ENDSEC');
+    // HEADER SECTION specifying DXF R12 (AC1009)
+    dxf += f(0, 'SECTION') + f(2, 'HEADER') + f(9, '$ACADVER') + f(1, 'AC1009') + f(0, 'ENDSEC');
 
     // Define layers
     const layers = [
@@ -5386,7 +4838,7 @@ function renderPlanVisualizer(svg) {
     leftText.setAttribute('font-family', 'JetBrains Mono, monospace');
     leftText.setAttribute('text-anchor', 'end');
     leftText.setAttribute('style', 'user-select: none; pointer-events: none;');
-    leftText.textContent = `▶ ${labelText}`;
+    leftText.textContent = `Γû╢ ${labelText}`;
     sectionLineG.appendChild(leftText);
     
     const rightText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
@@ -5397,7 +4849,7 @@ function renderPlanVisualizer(svg) {
     rightText.setAttribute('font-family', 'JetBrains Mono, monospace');
     rightText.setAttribute('text-anchor', 'start');
     rightText.setAttribute('style', 'user-select: none; pointer-events: none;');
-    rightText.textContent = `${labelText} ◀`;
+    rightText.textContent = `${labelText} ΓùÇ`;
     sectionLineG.appendChild(rightText);
     
     // Add drag event listener directly to the section group
@@ -5627,147 +5079,6 @@ function showColumnEditor(e, col) {
         }
     };
     document.addEventListener('click', clickOutsideHandler);
-}
-
-// Parameter Help System
-const PARAM_HELP = {
-    'slab-geometry': {
-        title: 'Slab Geometry Parameters',
-        diagram: `<svg viewBox="0 0 560 220" xmlns="http://www.w3.org/2000/svg">
-  <defs><marker id="arr" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3 Z" fill="rgba(148,163,184,0.8)"/></marker></defs>
-  <!-- Slab -->
-  <rect x="40" y="60" width="480" height="80" rx="4" fill="rgba(17,24,39,0.9)" stroke="rgba(55,65,81,0.9)" stroke-width="1.5"/>
-  <!-- Width arrow -->
-  <line x1="40" y1="155" x2="520" y2="155" stroke="rgba(148,163,184,0.7)" stroke-width="1" marker-end="url(#arr)" marker-start="url(#arr)"/>
-  <text x="280" y="170" fill="#94a3b8" font-size="10" font-family="JetBrains Mono,monospace" text-anchor="middle">Slab Width (W)</text>
-  <!-- Height arrow -->
-  <line x1="25" y1="60" x2="25" y2="140" stroke="rgba(148,163,184,0.7)" stroke-width="1" marker-end="url(#arr)" marker-start="url(#arr)"/>
-  <text x="18" y="103" fill="#94a3b8" font-size="9" font-family="JetBrains Mono,monospace" text-anchor="middle" transform="rotate(-90,18,103)">h (thickness)</text>
-  <!-- Spans -->
-  <line x1="40" y1="55" x2="230" y2="55" stroke="#38bdf8" stroke-width="1" marker-end="url(#arr)" marker-start="url(#arr)"/>
-  <text x="135" y="48" fill="#38bdf8" font-size="9" font-family="JetBrains Mono,monospace" text-anchor="middle">Span 1 (L1)</text>
-  <line x1="231" y1="55" x2="520" y2="55" stroke="#10b981" stroke-width="1" marker-end="url(#arr)" marker-start="url(#arr)"/>
-  <text x="376" y="48" fill="#10b981" font-size="9" font-family="JetBrains Mono,monospace" text-anchor="middle">Span 2 (L2)</text>
-  <!-- Support columns -->
-  <rect x="215" y="140" width="20" height="30" fill="rgba(30,41,59,0.8)" stroke="#475569" stroke-width="1"/>
-  <rect x="36" y="140" width="20" height="30" fill="rgba(30,41,59,0.8)" stroke="#475569" stroke-width="1"/>
-  <rect x="502" y="140" width="20" height="30" fill="rgba(30,41,59,0.8)" stroke="#475569" stroke-width="1"/>
-  <!-- Label -->
-  <text x="280" y="210" fill="#94a3b8" font-size="9" font-family="Space Grotesk,sans-serif" text-anchor="middle">Y-Span (transverse direction, perpendicular tendons)</text>
-</svg>`,
-        params: [
-            { name: 'Number of Spans', range: '1–3', desc: 'How many continuous bays the slab has in the X direction. Controls span length inputs.' },
-            { name: 'Slab Thickness (h)', range: '10–60 cm', desc: 'Total depth of the concrete slab. Greater depth allows more tendon drape and self-weight.' },
-            { name: 'Slab Width (W)', range: '2–100 m', desc: 'Transverse dimension (Y-direction) for load balancing and plan layout.' },
-            { name: 'Span Length (L)', range: '3–25 m', desc: 'Individual span length in X-direction. Can be different per span.' },
-            { name: 'Y-Span Length', range: '3–25 m', desc: 'Span length used for perpendicular (Y-direction) tendons.' },
-            { name: 'Concrete Density', range: '20–26 kN/m³', desc: 'Used to compute self-weight load for balancing: w = density × h × width.' },
-        ]
-    },
-    'concrete-cover': {
-        title: 'Concrete Cover & Clearances',
-        diagram: `<svg viewBox="0 0 560 200" xmlns="http://www.w3.org/2000/svg">
-  <!-- Slab -->
-  <rect x="40" y="40" width="480" height="110" rx="4" fill="rgba(17,24,39,0.9)" stroke="rgba(55,65,81,0.9)" stroke-width="1.5"/>
-  <!-- Top cover -->
-  <line x1="40" y1="60" x2="520" y2="60" stroke="#ef4444" stroke-width="1.2" stroke-dasharray="4,4"/>
-  <text x="530" y="64" fill="#ef4444" font-size="9" font-family="JetBrains Mono,monospace">c_top</text>
-  <!-- Bottom cover -->
-  <line x1="40" y1="130" x2="520" y2="130" stroke="#ef4444" stroke-width="1.2" stroke-dasharray="4,4"/>
-  <text x="530" y="134" fill="#ef4444" font-size="9" font-family="JetBrains Mono,monospace">c_bot</text>
-  <!-- Tendon path -->
-  <path d="M 80 130 Q 180 130 230 70 T 300 55 T 370 70 Q 420 130 480 130" fill="none" stroke="#38bdf8" stroke-width="2.5"/>
-  <!-- Cover dim arrows -->
-  <line x1="22" y1="40" x2="22" y2="60" stroke="rgba(239,68,68,0.7)" stroke-width="1" marker-end="url(#arr2)" marker-start="url(#arr2)"/>
-  <text x="14" y="53" fill="#ef4444" font-size="8" text-anchor="middle" font-family="JetBrains Mono,monospace" transform="rotate(-90,14,53)">c_top</text>
-  <line x1="22" y1="130" x2="22" y2="150" stroke="rgba(239,68,68,0.7)" stroke-width="1" marker-end="url(#arr2)" marker-start="url(#arr2)"/>
-  <text x="14" y="143" fill="#ef4444" font-size="8" text-anchor="middle" font-family="JetBrains Mono,monospace" transform="rotate(-90,14,143)">c_bot</text>
-  <!-- Inflection point -->
-  <circle cx="300" cy="55" r="5" fill="#38bdf8" stroke="#1e293b" stroke-width="2"/>
-  <text x="310" y="50" fill="#38bdf8" font-size="9" font-family="Space Grotesk,sans-serif">Support Peak</text>
-  <text x="90" y="145" fill="#38bdf8" font-size="9" font-family="Space Grotesk,sans-serif">Span Low Pt</text>
-  <defs><marker id="arr2" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3 Z" fill="rgba(239,68,68,0.8)"/></marker></defs>
-</svg>`,
-        params: [
-            { name: 'Top Cover (c_top)', range: '1.5–10 cm', desc: 'Minimum concrete from slab top face to tendon. Tendon cannot rise above (h - c_top).' },
-            { name: 'Bottom Cover (c_bot)', range: '1.5–10 cm', desc: 'Minimum concrete from slab bottom face to tendon. Tendon cannot dip below c_bot.' },
-            { name: 'Inflection Ratio (a/L)', range: '0.05–0.25', desc: 'Sets where the parabola inflects from the support high-point. Controls the curvature zone at supports.' },
-            { name: 'Min Support Angle (°)', range: '0–45°', desc: 'Minimum allowable tendon slope angle at the support. Too flat means poor friction.' },
-            { name: 'Max Support Angle (°)', range: '0–45°', desc: 'Maximum allowable tendon slope at the support. Too steep causes excessive bearing stress.' },
-        ]
-    },
-    'tendon-prestressing': {
-        title: 'Tendon & Prestressing Parameters',
-        diagram: `<svg viewBox="0 0 560 200" xmlns="http://www.w3.org/2000/svg">
-  <!-- Slab -->
-  <rect x="40" y="50" width="480" height="90" rx="4" fill="rgba(17,24,39,0.9)" stroke="rgba(55,65,81,0.9)" stroke-width="1.5"/>
-  <!-- Tendon -->
-  <path d="M 50 130 Q 150 130 220 85 T 300 60 T 380 85 Q 440 130 520 130" fill="none" stroke="#38bdf8" stroke-width="2.5"/>
-  <!-- Duct envelope -->
-  <path d="M 50 127 Q 150 127 220 82 T 300 57 T 380 82 Q 440 127 520 127" fill="none" stroke="#38bdf8" stroke-width="1" stroke-dasharray="2,2" opacity="0.45"/>
-  <path d="M 50 133 Q 150 133 220 88 T 300 63 T 380 88 Q 440 133 520 133" fill="none" stroke="#38bdf8" stroke-width="1" stroke-dasharray="2,2" opacity="0.45"/>
-  <!-- Jacking arrow -->
-  <text x="50" y="45" fill="#38bdf8" font-size="9" font-family="Space Grotesk,sans-serif">P₀ (Jacking Force)</text>
-  <line x1="52" y1="130" x2="80" y2="130" stroke="#38bdf8" stroke-width="2" marker-end="url(#arrBlue)"/>
-  <!-- Spacing -->
-  <line x1="200" y1="165" x2="260" y2="165" stroke="#10b981" stroke-width="1" marker-end="url(#arrGrn)" marker-start="url(#arrGrn)"/>
-  <text x="230" y="178" fill="#10b981" font-size="9" text-anchor="middle" font-family="JetBrains Mono,monospace">spacing</text>
-  <!-- Duct OD label -->
-  <circle cx="220" cy="85" r="7" fill="none" stroke="#94a3b8" stroke-width="1"/>
-  <text x="235" y="80" fill="#94a3b8" font-size="8" font-family="JetBrains Mono,monospace">Duct OD</text>
-  <defs>
-    <marker id="arrBlue" markerWidth="6" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3 Z" fill="#38bdf8"/></marker>
-    <marker id="arrGrn" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3 Z" fill="#10b981"/></marker>
-  </defs>
-</svg>`,
-        params: [
-            { name: 'X Jacking Force (P₀)', range: '100–5000 kN', desc: 'Total prestress applied at the jacking end in the X (longitudinal) direction.' },
-            { name: 'Y Jacking Force', range: '100–5000 kN', desc: 'Total prestress applied to perpendicular (Y-direction) tendons.' },
-            { name: 'Jacking End', range: 'Left/Right/Both', desc: 'Which end the jack is applied from. "Both" applies full force from both ends (reduces friction losses).' },
-            { name: 'Anchor Set (Δ)', range: '0–1.5 cm', desc: 'Wedge slip at anchor on release. Creates a reverse loss zone near the jacking end.' },
-            { name: 'Curvature Coeff (μ)', range: '0.05–0.30', desc: 'Friction loss factor per radian of curvature. Higher μ = more loss along curves.' },
-            { name: 'Wobble Coeff (k)', range: '0.0005–0.005 rad/m', desc: 'Unintended angular deviation per metre. Represents imperfect duct alignment.' },
-            { name: 'X Spacing', range: '0.5–5 m', desc: 'Centre-to-centre distance between longitudinal tendons in the X direction.' },
-            { name: 'Y Spacing', range: '0.5–5 m', desc: 'Centre-to-centre distance between perpendicular tendons in the Y direction.' },
-            { name: 'Duct Outer Diameter', range: '1.0–15 cm', desc: 'External diameter of the tendon duct. Used for clash detection and cover check.' },
-        ]
-    }
-};
-
-function showParamHelp(key) {
-    const data = PARAM_HELP[key];
-    if (!data) return;
-
-    const modal = document.getElementById('param-help-modal');
-    const title = document.getElementById('param-help-title');
-    const body = document.getElementById('param-help-body');
-    if (!modal || !title || !body) return;
-
-    title.textContent = data.title;
-
-    let html = `<div class="param-help-diagram">${data.diagram}</div>`;
-    html += `<table style="width:100%;border-collapse:collapse;font-size:0.8rem;">
-      <thead>
-        <tr style="background:rgba(255,255,255,0.04);border-bottom:1px solid rgba(255,255,255,0.08);">
-          <th style="padding:8px 10px;text-align:left;color:#94a3b8;font-family:'Space Grotesk',sans-serif;">Parameter</th>
-          <th style="padding:8px 10px;text-align:left;color:#94a3b8;font-family:'Space Grotesk',sans-serif;width:100px;">Range</th>
-          <th style="padding:8px 10px;text-align:left;color:#94a3b8;font-family:'Space Grotesk',sans-serif;">Description</th>
-        </tr>
-      </thead>
-      <tbody>`;
-
-    data.params.forEach((p, i) => {
-        const bg = i % 2 === 0 ? 'rgba(255,255,255,0.015)' : 'transparent';
-        html += `<tr style="background:${bg};border-bottom:1px solid rgba(255,255,255,0.04);">
-          <td style="padding:7px 10px;color:#38bdf8;font-family:'JetBrains Mono',monospace;font-size:0.75rem;white-space:nowrap;">${p.name}</td>
-          <td style="padding:7px 10px;color:#f59e0b;font-family:'JetBrains Mono',monospace;font-size:0.7rem;">${p.range}</td>
-          <td style="padding:7px 10px;color:#cbd5e1;font-size:0.78rem;line-height:1.45;">${p.desc}</td>
-        </tr>`;
-    });
-    html += `</tbody></table>`;
-
-    body.innerHTML = html;
-    modal.classList.remove('hidden');
 }
 
 // Start the Application
