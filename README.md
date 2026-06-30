@@ -37,13 +37,15 @@ To install the TendonFlow pyRevit extension in Autodesk Revit:
 8. Choose your exported `.json` design file in the file explorer prompt.
 9. **Done!** TendonFlow instantly models all 3D tendon swept solids inside the slab, writing all parameters (supports, low points, covers, force, and span lengths) to the elements.
 
-### Workflow B: Interactive Designer Bridge
-1. In Revit, select a plan curve line and the concrete slab.
-2. Click the **`TendonFlow Designer`** button on the TendonFlow ribbon.
-3. An interactive window will load the slab's length, thickness, and span boundaries directly from Revit.
-4. Customize your drape profile inside the window.
-5. Click **`Import to Revit`** inside the designer panel.
-6. **Done!** The 3D duct is modeled inside the slab immediately.
+### Workflow B: Interactive Designer (Sync from Revit into Web Designer)
+1. Click the **`TendonFlow Designer`** button on the TendonFlow ribbon.
+2. The web designer window opens inside Revit.
+3. Click **`🔗 Select Revit Slab & Line`** at the top of the window.
+4. In Revit, click the plan line you want to model, then click the host concrete slab floor.
+5. The web designer automatically updates with the slab thickness and span lengths read from Revit.
+6. Adjust your drape parameters (supports, low points, covers) interactively in the visualizer.
+7. Click **`⬇ Download Design JSON`** at the top of the window to download the design file.
+8. Use the **`Batch Import`** ribbon button to model the 3D tendon duct using the downloaded file.
 
 ### Workflow C: Updating Existing Tendons
 1. Select any modeled tendon duct (`Generic Model` DirectShape) in Revit.

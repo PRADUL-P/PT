@@ -162,82 +162,11 @@ function init() {
 }
 
 function setupRevitBridge() {
-    const btnImportRevit = document.getElementById('btn-import-revit');
-    if (!btnImportRevit) return;
-    
     // Poll for window.chrome.webview to handle injection race condition in Revit
     const checkInterval = setInterval(() => {
         const isRevit = typeof window.chrome !== 'undefined' && typeof window.chrome.webview !== 'undefined';
         if (isRevit) {
             clearInterval(checkInterval);
-            
-            btnImportRevit.classList.remove('hidden');
-            
-            btnImportRevit.addEventListener('click', () => {
-                console.log("Import to Revit button clicked!");
-                try {
-                    const payload = {
-                        action: 'import_tendons',
-                        state: state
-                    };
-                    console.log("Sending data to Revit:", payload);
-                    window.chrome.webview.postMessage(payload);
-                    console.log("window.chrome.webview.postMessage executed.");
-                    
-                    // Automatically download the JSON configuration file as well
-                    try {
-                        const defaultName = 'pt_slab_design_sync';
-                        const dataToSave = {
-                            name: defaultName,
-                            timestamp: new Date().toISOString(),
-                            version: '1.0',
-                            state: {
-                                numSpans: state.numSpans,
-                                unit: state.unit,
-                                slabThickness: state.slabThickness,
-                                concreteDensity: state.concreteDensity,
-                                spanLengths: state.spanLengths,
-                                slabWidth: state.slabWidth,
-                                spanYLen: state.spanYLen,
-                                coverTop: state.coverTop,
-                                coverBottom: state.coverBottom,
-                                inflectionRatio: state.inflectionRatio,
-                                tendonForce: state.tendonForce,
-                                jackingEnd: state.jackingEnd,
-                                frictionMu: state.frictionMu,
-                                frictionK: state.frictionK,
-                                anchorSet: state.anchorSet,
-                                tendonSpacingX: state.tendonSpacingX,
-                                tendonSpacingY: state.tendonSpacingY,
-                                selectedRowIdx: state.selectedRowIdx,
-                                controlPointsRows: state.controlPointsRows.map(cp => ({
-                                    supports: cp.supports,
-                                    lowPoints: cp.lowPoints.map(lp => ({ xFract: lp.xFract, y: lp.y }))
-                                })),
-                                planXTendons: state.planXTendons,
-                                planYTendons: state.planYTendons,
-                                planColumns: state.planColumns,
-                                ductDiameter: state.ductDiameter
-                            }
-                        };
-                        const jsonString = JSON.stringify(dataToSave, null, 2);
-                        const blob = new Blob([jsonString], { type: 'application/json;charset=utf-8;' });
-                        const url = URL.createObjectURL(blob);
-                        const link = document.createElement('a');
-                        link.setAttribute('href', url);
-                        link.setAttribute('download', `${defaultName}.json`);
-                        link.style.visibility = 'hidden';
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                    } catch (dlErr) {
-                        console.error("Auto download failed:", dlErr);
-                    }
-                } catch (err) {
-                    console.error("JS postMessage Error:", err);
-                    alert("JS postMessage Error: " + err.message);
-                }
-            });
             
             window.chrome.webview.addEventListener('message', event => {
                 try {
@@ -271,7 +200,13 @@ function setupRevitBridge() {
                         rebuildColumnLayout();
                         calculateAndRender();
                         
-                        alert(`Revit Sync Complete!\n- Slab thickness set to: ${state.slabThickness} mm\n- Tendon length set to: ${length.toFixed(2)} m`);
+                        // Show a non-blocking toast instead of a blocking alert
+                        const toastEl = document.getElementById('revit-sync-toast');
+                        if (toastEl) {
+                            toastEl.textContent = `Revit sync: ${state.slabThickness}mm slab, ${length.toFixed(2)}m tendon`;
+                            toastEl.style.display = 'block';
+                            setTimeout(() => { toastEl.style.display = 'none'; }, 4000);
+                        }
                     } else if (data.action === 'line_selected') {
                         const length = data.length;
                         if (state.numSpans === 1) {
@@ -290,7 +225,12 @@ function setupRevitBridge() {
                         syncColumnsFromSpanLengths();
                         rebuildColumnLayout();
                         calculateAndRender();
-                        alert(`Span lengths updated from selected Revit curve path (Total: ${length.toFixed(2)} m)`);
+                        const toastEl2 = document.getElementById('revit-sync-toast');
+                        if (toastEl2) {
+                            toastEl2.textContent = `Span updated from Revit line (${length.toFixed(2)} m)`;
+                            toastEl2.style.display = 'block';
+                            setTimeout(() => { toastEl2.style.display = 'none'; }, 4000);
+                        }
                     }
                 } catch(e) {
                     console.error("Error handling WebView2 message:", e);
