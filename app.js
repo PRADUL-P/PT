@@ -158,6 +158,101 @@ function init() {
     setupEventListeners();
     resetDesign();
     calculateAndRender();
+    setupRevitBridge();
+}
+
+function setupRevitBridge() {
+    const btnImportRevit = document.getElementById('btn-import-revit');
+    if (!btnImportRevit) return;
+    
+    // Poll for window.chrome.webview to handle injection race condition in Revit
+    const checkInterval = setInterval(() => {
+        const isRevit = typeof window.chrome !== 'undefined' && typeof window.chrome.webview !== 'undefined';
+        if (isRevit) {
+            clearInterval(checkInterval);
+            
+            btnImportRevit.classList.remove('hidden');
+            
+            btnImportRevit.addEventListener('click', () => {
+                console.log("Import to Revit button clicked!");
+                try {
+                    const payload = {
+                        action: 'import_tendons',
+                        state: state
+                    };
+                    console.log("Sending data to Revit:", payload);
+                    window.chrome.webview.postMessage(payload);
+                    console.log("window.chrome.webview.postMessage executed.");
+                } catch (err) {
+                    console.error("JS postMessage Error:", err);
+                    alert("JS postMessage Error: " + err.message);
+                }
+            });
+            
+            window.chrome.webview.addEventListener('message', event => {
+                try {
+                    const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+                    
+                    if (data.action === 'revit_sync') {
+                        const length = data.length;
+                        const thickness = data.thickness;
+                        
+                        // 1. Update Slab Thickness
+                        state.slabThickness = Math.round(thickness);
+                        if (DOM.slabThickness) DOM.slabThickness.value = state.slabThickness;
+                        
+                        // 2. Update Span Lengths
+                        if (state.numSpans === 1) {
+                            state.spanLengths = [length];
+                        } else if (state.numSpans === 2) {
+                            state.spanLengths = [length * 0.5, length * 0.5];
+                        } else if (state.numSpans === 3) {
+                            state.spanLengths = [length * 0.33, length * 0.34, length * 0.33];
+                        }
+                        
+                        const inputs = [DOM.span1Len, DOM.span2Len, DOM.span3Len];
+                        state.spanLengths.forEach((l, idx) => {
+                            if (inputs[idx]) inputs[idx].value = l.toFixed(2);
+                        });
+                        
+                        // 3. Recompute and render
+                        syncColumnsFromSpanLengths();
+                        updateInputUnitBounds();
+                        rebuildColumnLayout();
+                        calculateAndRender();
+                        
+                        alert(`Revit Sync Complete!\n- Slab thickness set to: ${state.slabThickness} mm\n- Tendon length set to: ${length.toFixed(2)} m`);
+                    } else if (data.action === 'line_selected') {
+                        const length = data.length;
+                        if (state.numSpans === 1) {
+                            state.spanLengths = [length];
+                        } else if (state.numSpans === 2) {
+                            state.spanLengths = [length * 0.5, length * 0.5];
+                        } else if (state.numSpans === 3) {
+                            state.spanLengths = [length * 0.33, length * 0.34, length * 0.33];
+                        }
+                        
+                        const inputs = [DOM.span1Len, DOM.span2Len, DOM.span3Len];
+                        state.spanLengths.forEach((l, idx) => {
+                            if (inputs[idx]) inputs[idx].value = l.toFixed(2);
+                        });
+                        
+                        syncColumnsFromSpanLengths();
+                        rebuildColumnLayout();
+                        calculateAndRender();
+                        alert(`Span lengths updated from selected Revit curve path (Total: ${length.toFixed(2)} m)`);
+                    }
+                } catch(e) {
+                    console.error("Error handling WebView2 message:", e);
+                }
+            });
+        }
+    }, 100);
+    
+    // Stop checking after 5 seconds if not running in Revit
+    setTimeout(() => {
+        clearInterval(checkInterval);
+    }, 5000);
 }
 
 // Unit conversion helpers
