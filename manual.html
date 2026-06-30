@@ -644,6 +644,12 @@
                     9. Practical Use Cases
                 </a>
             </li>
+            <li class="nav-item">
+                <a href="#revit-addin">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    10. Revit Add-in Guide
+                </a>
+            </li>
         </ul>
     </aside>
 
@@ -1138,6 +1144,58 @@
                     <li>Inside AutoCAD, click the command input bar, press <strong><code>Ctrl + V</code></strong>, and hit Enter.</li>
                     <li>Type <strong><code>DRAWELEVC</code></strong> (for elevation) or <strong><code>DRAWPLANC</code></strong> (for plan layout) and press Enter to draw.</li>
                 </ol>
+        </section>
+        
+        <section id="revit-addin" class="doc-section">
+            <h2>
+                <span class="sect-num">10.</span>
+                Revit Add-in Guide & Installation
+            </h2>
+            <p>TendonFlow includes a robust pyRevit extension to bridge your web designs directly into 3D Revit models. This section outlines how to install the extension and run the direct and batch workflows.</p>
+
+            <h3>1. Installation</h3>
+            <p>To load the TendonFlow ribbon inside Revit:
+                <ol>
+                    <li>Click the <strong>Download Revit Extension</strong> button on the Web Designer header to download <code>TendonFlow.extension.zip</code>.</li>
+                    <li>Unzip the downloaded file.</li>
+                    <li>Move the extracted <code>TendonFlow.extension</code> folder into your local pyRevit Extensions directory (typically located at <code>C:\Users\&lt;YourUsername&gt;\AppData\Roaming\pyRevit\Extensions\</code>).</li>
+                    <li>In Autodesk Revit, go to the <strong>pyRevit</strong> tab on the ribbon and click <strong>Reload</strong>.</li>
+                    <li>A new <strong>TendonFlow</strong> tab will load with four tools: <strong>TendonFlow Designer</strong>, <strong>Tendon From Line</strong>, <strong>Batch Import</strong>, and <strong>Update Tendon</strong>.</li>
+                </ol>
+            </p>
+
+            <h3>2. Batch Import Workflow (Offline & Fast)</h3>
+            <p>Import and model dozens of tendons simultaneously from a single web design file:
+                <ol>
+                    <li>Draw model or detail lines along your tendon plan layouts in your Revit floor view.</li>
+                    <li>Design your tendon elevation clearances and drapes on the TendonFlow website.</li>
+                    <li>Click <strong>Save Design</strong> in the header to save the <code>.json</code> design file.</li>
+                    <li>In Revit, click <strong>Batch Import</strong> on the TendonFlow tab.</li>
+                    <li>Select all the plan lines, click <strong>Finish</strong> in the top-left of the Revit viewport, and then click to select the host Concrete Slab Floor.</li>
+                    <li>Select the downloaded <code>.json</code> file in the file explorer.</li>
+                    <li>TendonFlow will automatically create the 3D swept geometries inside the slab and populate all parameters!</li>
+                </ol>
+            </p>
+
+            <h3>3. Interactive Designer Bridge Workflow</h3>
+            <p>Design a specific tendon in real-time inside the Revit window:
+                <ol>
+                    <li>Select a single plan line and the host slab floor in Revit.</li>
+                    <li>Click <strong>TendonFlow Designer</strong> on the ribbon.</li>
+                    <li>The designer window automatically reads the slab depth, start/end locations, and span count.</li>
+                    <li>Adjust your drape settings and click <strong>Import to Revit</strong> inside the window.</li>
+                </ol>
+            </p>
+
+            <h3>4. Modifying and Updating Tendon Geometry</h3>
+            <p>Unlike standard direct shapes, TendonFlow maintains custom parameters on modeled generic models. To edit a tendon path after modeling:
+                <ol>
+                    <li>Select the tendon element in Revit.</li>
+                    <li>In the Properties Palette, edit any clearance parameters under the <strong>Constraints</strong> group (e.g. <code>TF_Support_0</code> to <code>4</code>, <code>TF_LowPoint_1</code> to <code>3</code>, or <code>TF_SpanLength_1</code> to <code>3</code>).</li>
+                    <li>Click the <strong>Update Tendon</strong> button on the TendonFlow tab.</li>
+                    <li>TendonFlow will dynamically recalculate the curve and update the 3D swept duct element immediately!</li>
+                </ol>
+            </p>
         </section>
         
         <!-- Document Footer -->
