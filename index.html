@@ -24,13 +24,6 @@
                 <h1>TendonFlow <span class="badge">PT Slab Designer</span></h1>
             </div>
             <div class="header-actions">
-                <div class="version-selector-container" style="display: flex; align-items: center; gap: 0.5rem; margin-right: 0.5rem;">
-                    <label for="version-select" style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; white-space: nowrap;">App Version:</label>
-                    <select id="version-select" class="form-control form-control-sm" style="width: auto; background: var(--bg-surface); color: var(--text-primary); border-color: var(--border-color); cursor: pointer; padding: 4px 8px; font-size: 0.75rem; border-radius: 6px;">
-                        <option value="v2" selected>v2 (New)</option>
-                        <option value="v1">v1 (Stable)</option>
-                    </select>
-                </div>
                 <button id="btn-reset" class="btn btn-secondary">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
                     Reset Design
@@ -44,10 +37,10 @@
                     Load Design
                 </button>
                 <input type="file" id="input-load-json" accept=".json" style="display: none;">
-                <button id="btn-import-revit" class="btn btn-success hidden" style="background-color: #10b981; border-color: #059669; color: white;">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
-                    Import to Revit
-                </button>
+                <a href="TendonFlow.extension.zip" download class="btn btn-success" style="background-color: #8b5cf6; border-color: #7c3aed; color: white; display: flex; align-items: center; gap: 0.5rem; text-decoration: none;">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Download Revit Extension
+                </a>
                 <button id="btn-export-csv" class="btn btn-primary">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                     Export CSV
@@ -590,13 +583,7 @@
     </div>
 
     <script type="module" src="app.js"></script>
-    <script>
-        document.getElementById('version-select').addEventListener('change', (e) => {
-            if (e.target.value === 'v1') {
-                window.location.href = '/v1.html';
-            }
-        });
-    </script>
+
 
     <!-- Parameter Help Modal -->
     <div id="param-help-modal" class="modal-overlay hidden">
