@@ -25,7 +25,7 @@ const state = {
     anchorSet: 6,             // mm (wedge slip)
     tendonSpacingX: 1.5,      // meters
     tendonSpacingY: 1.5,      // meters
-    verticalExaggeration: 5,  // Scale multiplier for vertical representation
+    verticalExaggeration: 2,  // Scale multiplier for vertical representation
     activeTab: 'elevation',   // 'elevation' or 'plan'
     clipboardTendonSet: null, // copied perpendicular tendon set state
     clipboardControlPoints: null, // copied tendon profile heights state
@@ -1062,24 +1062,29 @@ function syncStateToInputs() {
     const elevPanel = document.getElementById('section-elevation-heights');
     const perpPanel = document.getElementById('section-perpendicular-tendons');
     const planPanel = document.getElementById('section-plan-layout');
+    const vScaleControl = document.querySelector('.vertical-scale-control');
     
     if (state.activeTab === 'plan') {
         if (elevPanel) elevPanel.style.display = 'none';
         if (perpPanel) perpPanel.style.display = 'none';
         if (planPanel) planPanel.style.display = 'block';
+        if (vScaleControl) vScaleControl.style.display = 'none';
         updateSidebarPlanInputs();
     } else if (state.activeTab === 'split') {
         if (elevPanel) elevPanel.style.display = 'block';
         if (perpPanel) perpPanel.style.display = 'block';
         if (planPanel) planPanel.style.display = 'block';
+        if (vScaleControl) vScaleControl.style.display = 'flex';
         updateSidebarTendonSets();
         updateSidebarPlanInputs();
     } else {
         if (elevPanel) elevPanel.style.display = 'block';
         if (perpPanel) perpPanel.style.display = 'block';
         if (planPanel) planPanel.style.display = 'none';
+        if (vScaleControl) vScaleControl.style.display = 'flex';
         updateSidebarTendonSets();
     }
+
 
     // Sync profile paste button state
     if (DOM.btnPasteProfile) {
@@ -1437,8 +1442,11 @@ function renderVisualizer() {
             botCol.setAttribute('height', '40');
             
             if (isSelectedRow) {
-                botCol.setAttribute('class', 'svg-support-column active-section-col');
+                botCol.setAttribute('class', 'svg-support-column active-section-col svg-drag-node');
                 botCol.setAttribute('opacity', '1.0');
+                botCol.dataset.type = 'section-column';
+                botCol.dataset.id = col.id;
+                botCol.addEventListener('mousedown', (e) => startDrag(e, botCol));
             } else {
                 botCol.setAttribute('class', 'svg-support-column');
                 botCol.setAttribute('opacity', '0.2');
@@ -1926,6 +1934,56 @@ function drag(e) {
         return;
     }
 
+    if (dragNode.type === 'section-column') {
+        const id = dragNode.element.dataset.id;
+        const sc = state.svgCoords;
+        if (sc) {
+            const relativeX = ((e.clientX - svgRect.left) / svgRect.width) * 1000;
+            const totalLength = state.spanLengths.reduce((a, b) => a + b, 0);
+            const x = ((relativeX - sc.margin.left) / sc.chartW) * totalLength;
+            
+            const col = state.planColumns.find(c => c.id === id);
+            if (col && !col.lockX) {
+                const isSupport0 = id.includes('col-0');
+                const suppIdx = parseInt(id.replace('col-', ''));
+                
+                let minX = 0;
+                let maxX = totalLength;
+                
+                const activeRowIdx = Math.floor(state.selectedRowIdx / 2);
+                if (suppIdx > 0) {
+                    const prevCol = state.planColumns.find(c => c.id === `col-${suppIdx-1}-row${activeRowIdx}`);
+                    if (prevCol) minX = prevCol.x + 3.0; // min 3.0m span
+                }
+                if (suppIdx < state.numSpans) {
+                    const nextCol = state.planColumns.find(c => c.id === `col-${suppIdx+1}-row${activeRowIdx}`);
+                    if (nextCol) maxX = nextCol.x - 3.0; // min 3.0m span
+                }
+                
+                if (isSupport0) {
+                    col.x = 0;
+                } else {
+                    col.x = Math.max(minX, Math.min(maxX, x));
+                }
+                
+                // Sync all columns in this set (same support index) to match this support line X
+                state.planColumns.forEach(c => {
+                    if (c.id.startsWith(`col-${suppIdx}-`)) {
+                        c.x = col.x;
+                    }
+                });
+                
+                syncSpanLengthsFromColumns();
+            }
+            
+            calculateFrictionAndLosses();
+            renderVisualizer();
+            updateChecksAndOutputs();
+            updateSidebarPlanInputs();
+        }
+        return;
+    }
+
     if (dragNode.type === 'plan-column') {
         const id = dragNode.element.dataset.id;
         const totalWidth = state.slabWidth;
@@ -1955,12 +2013,16 @@ function drag(e) {
                     if (nextCol) maxX = nextCol.x - 3.0; // min 3.0m span
                 }
                 
-                if (isSupport0) {
-                    col.x = 0;
-                } else {
-                    col.x = Math.max(minX, Math.min(maxX, x));
+                if (!col.lockX) {
+                    if (isSupport0) {
+                        col.x = 0;
+                    } else {
+                        col.x = Math.max(minX, Math.min(maxX, x));
+                    }
                 }
-                col.y = Math.max(0, Math.min(totalWidth, y));
+                if (!col.lockY) {
+                    col.y = Math.max(0, Math.min(totalWidth, y));
+                }
                 
                 // Sync all columns in this set (same support index) to match this support line X
                 state.planColumns.forEach(c => {
@@ -1977,6 +2039,7 @@ function drag(e) {
             updateChecksAndOutputs();
             updateSidebarPlanInputs();
         }
+
         return;
     }
     

@@ -572,6 +572,63 @@
                 margin-left: 0;
                 padding: 2.5rem 1.5rem;
             }
+            .revit-badge {
+                display: inline-block;
+                padding: 0.2rem 0.5rem;
+                font-size: 0.72rem;
+                font-family: 'JetBrains Mono', monospace;
+                background: rgba(168, 85, 247, 0.12);
+                color: #c084fc;
+                border: 1px solid rgba(168, 85, 247, 0.25);
+                border-radius: 4px;
+                margin-top: 0.6rem;
+                font-weight: 500;
+            }
+            .field-detail-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 1.75rem 0;
+                font-size: 0.875rem;
+                background: rgba(18, 24, 38, 0.4);
+                border: 1px solid var(--border-color);
+                border-radius: 8px;
+                overflow: hidden;
+            }
+            .field-detail-table th, .field-detail-table td {
+                padding: 0.85rem 1.1rem;
+                text-align: left;
+                border-bottom: 1px solid var(--border-color);
+                vertical-align: top;
+            }
+            .field-detail-table th {
+                background: var(--bg-surface-elevated);
+                font-family: 'Space Grotesk', sans-serif;
+                color: var(--color-primary-light);
+                font-weight: 600;
+                letter-spacing: -0.01em;
+            }
+            .field-detail-table tr:last-child td {
+                border-bottom: none;
+            }
+            .field-detail-table code {
+                font-family: 'JetBrains Mono', monospace;
+                background: rgba(255,255,255,0.05);
+                padding: 0.15rem 0.35rem;
+                border-radius: 4px;
+                color: var(--text-primary);
+                font-size: 0.8rem;
+            }
+            .field-detail-table .range-badge {
+                font-size: 0.75rem;
+                background-color: var(--bg-surface-elevated);
+                padding: 0.15rem 0.4rem;
+                border-radius: 4px;
+                color: var(--text-secondary);
+                border: 1px solid var(--border-color);
+            }
+            .field-detail-table tr:hover td {
+                background: rgba(255, 255, 255, 0.01);
+            }
         }
     </style>
 </head>
@@ -694,33 +751,90 @@
                 <div class="parameter-card">
                     <h4>Number of Spans <span class="range">1 - 3</span></h4>
                     <p>Sets how many continuous structural spans are modeled longitudinally. <strong>To change:</strong> Use the "Number of Spans" dropdown. Length controls populate automatically.</p>
+                    <div class="revit-badge">Revit: N/A</div>
                 </div>
                 <div class="parameter-card">
                     <h4>Number of Column Rows <span class="range">1 - 4</span></h4>
                     <p>Specifies how many transverse column rows are positioned along the design grid in plan layout (e.g. 1 Row in center, or 3 Rows for Left, Mid, Right grid lines). <strong>To change:</strong> Use the "Number of Column Rows" dropdown.</p>
+                    <div class="revit-badge">Revit: N/A</div>
                 </div>
                 <div class="parameter-card">
                     <h4>Measurement Unit <span class="range">cm / mm</span></h4>
                     <p>Toggles the display and input units for clearances, covers, heights, and anchor sets. <strong>To change:</strong> Select "Centimeters (cm)" or "Millimeters (mm)" from the "Measurement Unit" dropdown.</p>
+                    <div class="revit-badge">Revit: Standardized to Metric (mm)</div>
                 </div>
                 <div class="parameter-card">
                     <h4>Slab Thickness <span class="range">10 - 60 cm</span></h4>
                     <p>The total thickness (h) of the concrete slab. Thicker slabs increase self-weight but provide more drape room. <strong>To change:</strong> Enter thickness value in the thickness input.</p>
+                    <div class="revit-badge">Revit: TF_SlabThickness (Length)</div>
                 </div>
                 <div class="parameter-card">
                     <h4>Slab Width <span class="range">2 - 100 m</span></h4>
                     <p>The design tributary width. Determines the total concrete self-weight to balance. <strong>To change:</strong> Enter the width value in the width numeric field.</p>
+                    <div class="revit-badge">Revit: N/A</div>
                 </div>
                 <div class="parameter-card">
                     <h4>Span Lengths <span class="range">3 - 25 m</span></h4>
                     <p>The longitudinal distance of each continuous span (L1, L2, L3). <strong>To change:</strong> Modify individual Span Length inputs populated under Slab Geometry.</p>
+                    <div class="revit-badge">Revit: TF_SpanLength_1 to _3 (Length)</div>
                 </div>
                 <div class="parameter-card">
                     <h4>Concrete Density <span class="range">20 - 26 kN/m³</span></h4>
                     <p>The unit weight of the concrete, used to calculate the gravity self-weight load ($w = \text{density} \times \text{thickness} \times \text{width}$). <strong>To change:</strong> Enter value in the "Density" field.</p>
+                    <div class="revit-badge">Revit: N/A</div>
                 </div>
             </div>
+
+            <table class="field-detail-table">
+                <thead>
+                    <tr>
+                        <th style="width: 25%;">Field / Parameter</th>
+                        <th style="width: 15%;">Range / Unit</th>
+                        <th style="width: 30%;">Autodesk Revit Shared Parameter</th>
+                        <th style="width: 30%;">Functional Description & Behavior</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Number of Spans</strong></td>
+                        <td><span class="range-badge">1 - 3</span></td>
+                        <td><code>N/A</code></td>
+                        <td>Determines how many continuous spans are modeled longitudinally. Dynamically displays span length controls in the web UI.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Number of Column Rows</strong></td>
+                        <td><span class="range-badge">1 - 4</span></td>
+                        <td><code>N/A</code></td>
+                        <td>Configures how many parallel rows of columns are placed transversely across the slab width in the plan view layout.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Slab Thickness (h)</strong></td>
+                        <td><span class="range-badge">10 - 60 cm</span></td>
+                        <td><code>TF_SlabThickness</code> <br><small style="color:var(--text-muted)">(Length)</small></td>
+                        <td>Defines the total depth of the concrete floor slab. Controls the upper limit for tendon profile drape heights.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Slab Width (W)</strong></td>
+                        <td><span class="range-badge">2 - 100 m</span></td>
+                        <td><code>N/A</code></td>
+                        <td>Transverse dimension of the concrete slab. Used to calculate total self-weight for balanced pressure fields.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Span Lengths (L1, L2, L3)</strong></td>
+                        <td><span class="range-badge">3 - 25 m</span></td>
+                        <td><code>TF_SpanLength_1</code><br><code>TF_SpanLength_2</code><br><code>TF_SpanLength_3</code> <br><small style="color:var(--text-muted)">(Length)</small></td>
+                        <td>Longitudinal lengths of individual continuous spans. Synchronizes directly with support columns coordinates.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Concrete Density</strong></td>
+                        <td><span class="range-badge">20 - 26 kN/m³</span></td>
+                        <td><code>N/A</code></td>
+                        <td>Unit density of reinforced concrete. Used in calculating self-weight uniform gravity load ($w_{sw}$).</td>
+                    </tr>
+                </tbody>
+            </table>
         </section>
+
 
         <!-- Section: Concrete Cover -->
         <section id="cover" class="doc-section">
@@ -795,21 +909,69 @@
                 <div class="parameter-card">
                     <h4>Top & Bottom Cover <span class="range">1.5 - 10 cm</span></h4>
                     <p>Defines the absolute boundary limits for the tendon path. <strong>To change:</strong> Enter values in "Top Cover" and "Bottom Cover" numeric fields.</p>
+                    <div class="revit-badge">Revit: TF_CoverTop / TF_CoverBottom (Length)</div>
                 </div>
                 <div class="parameter-card">
                     <h4>Inflection Ratio (a/L) <span class="range">0.05 - 0.25</span></h4>
                     <p>Adjusts where the parabolic path changes inflection from concave-down to concave-up. <strong>To change:</strong> Slide the "Inflection Point Ratio" bar.</p>
+                    <div class="revit-badge">Revit: TF_InflectionRatio (Number)</div>
                 </div>
                 <div class="parameter-card">
                     <h4>Min Support Angle <span class="range">0 - 45°</span></h4>
                     <p>The minimum slope angle required for the tendon centerline as it exits support columns to guarantee proper drape curvature. <strong>To change:</strong> Enter degrees in "Min Support Angle".</p>
+                    <div class="revit-badge">Revit: N/A</div>
                 </div>
                 <div class="parameter-card">
                     <h4>Max Support Angle <span class="range">0 - 45°</span></h4>
                     <p>The maximum entry slope angle at columns to avoid excessive friction and anchor stresses. <strong>To change:</strong> Enter degrees in "Max Support Angle".</p>
+                    <div class="revit-badge">Revit: N/A</div>
                 </div>
             </div>
+
+            <table class="field-detail-table">
+                <thead>
+                    <tr>
+                        <th style="width: 25%;">Field / Parameter</th>
+                        <th style="width: 15%;">Range / Unit</th>
+                        <th style="width: 30%;">Autodesk Revit Shared Parameter</th>
+                        <th style="width: 30%;">Functional Description & Behavior</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Top Cover</strong></td>
+                        <td><span class="range-badge">1.5 - 10 cm</span></td>
+                        <td><code>TF_CoverTop</code> <br><small style="color:var(--text-muted)">(Length)</small></td>
+                        <td>Minimum concrete cover required from the top face of the slab to the outer edge of the tendon duct.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Bottom Cover</strong></td>
+                        <td><span class="range-badge">1.5 - 10 cm</span></td>
+                        <td><code>TF_CoverBottom</code> <br><small style="color:var(--text-muted)">(Length)</small></td>
+                        <td>Minimum concrete cover required from the bottom face of the slab to the outer edge of the tendon duct.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Inflection Point Ratio (a/L)</strong></td>
+                        <td><span class="range-badge">0.05 - 0.25</span></td>
+                        <td><code>TF_InflectionRatio</code> <br><small style="color:var(--text-muted)">(Number)</small></td>
+                        <td>Ratio defining the inflection boundary point between support (concave-down) and span (concave-up) parabolas.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Min Support Angle</strong></td>
+                        <td><span class="range-badge">0 - 45°</span></td>
+                        <td><code>N/A</code></td>
+                        <td>Minimum allowed angle of the tendon at column support centerlines to ensure sufficient curvature drape.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Max Support Angle</strong></td>
+                        <td><span class="range-badge">0 - 45°</span></td>
+                        <td><code>N/A</code></td>
+                        <td>Maximum allowed slope angle at column support centerlines to avoid excessive friction losses and kinks.</td>
+                    </tr>
+                </tbody>
+            </table>
         </section>
+
 
         <!-- Section: Tendon & Prestressing -->
         <section id="prestressing" class="doc-section">
@@ -827,33 +989,96 @@
                 <div class="parameter-card">
                     <h4>X & Y Jacking Force <span class="range">100 - 5000 kN</span></h4>
                     <p>The jacking tension (P0) at the anchors. <strong>To change:</strong> Enter force values in "X Jacking Force" and "Y Jacking Force".</p>
+                    <div class="revit-badge">Revit: TF_TendonForce (Number)</div>
                 </div>
                 <div class="parameter-card">
                     <h4>Jacking End <span class="range">Left / Right / Both</span></h4>
                     <p>Specifies which ends of the continuous tendons are jacked. Jacking both ends reduces overall friction loss peak. <strong>To change:</strong> Select from the "Jacking End" dropdown.</p>
+                    <div class="revit-badge">Revit: N/A</div>
                 </div>
                 <div class="parameter-card">
                     <h4>Anchor Set <span class="range">0 - 1.5 cm</span></h4>
                     <p>Slippage distance (draw-in) during anchorage lockoff. <strong>To change:</strong> Type the value in the "Anchor Set" field.</p>
+                    <div class="revit-badge">Revit: N/A</div>
                 </div>
                 <div class="parameter-card">
                     <h4>Curvature Coeff (&mu;) <span class="range">0.05 - 0.30</span></h4>
                     <p>Friction coefficient representing steel sliding inside the duct. <strong>To change:</strong> Enter value in the "Curvature Coeff (&mu;)" field.</p>
+                    <div class="revit-badge">Revit: N/A</div>
                 </div>
                 <div class="parameter-card">
                     <h4>Wobble Coeff (k) <span class="range">0.0005 - 0.005</span></h4>
                     <p>Accidental wobble misalignment factor per meter. <strong>To change:</strong> Adjust the "Wobble Coeff (k, rad/m)" field.</p>
+                    <div class="revit-badge">Revit: N/A</div>
                 </div>
                 <div class="parameter-card">
                     <h4>Tendon X & Y Spacing <span class="range">0.5 - 5.0 m</span></h4>
                     <p>The average spacing between adjacent strands in the grid, used for calculating balanced pressure fields. <strong>To change:</strong> Adjust "X Spacing" and "Y Spacing".</p>
+                    <div class="revit-badge">Revit: N/A</div>
                 </div>
                 <div class="parameter-card">
                     <h4>Duct Outer Diameter <span class="range">1.0 - 15.0 cm</span></h4>
                     <p>The outer thickness (size) of the post-tensioning duct. Increases in duct diameter reduce the available vertical drape height. <strong>To change:</strong> Enter the size in "Duct Outer Diameter".</p>
+                    <div class="revit-badge">Revit: TF_DuctDiameter (Length)</div>
                 </div>
             </div>
+
+            <table class="field-detail-table">
+                <thead>
+                    <tr>
+                        <th style="width: 25%;">Field / Parameter</th>
+                        <th style="width: 15%;">Range / Unit</th>
+                        <th style="width: 30%;">Autodesk Revit Shared Parameter</th>
+                        <th style="width: 30%;">Functional Description & Behavior</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>X & Y Jacking Force</strong></td>
+                        <td><span class="range-badge">100 - 5000 kN</span></td>
+                        <td><code>TF_TendonForce</code> <br><small style="color:var(--text-muted)">(Number)</small></td>
+                        <td>Jacking force ($P_0$) applied at the anchors. Used in calculating prestressing loss profiles and safety checks.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Jacking End</strong></td>
+                        <td><span class="range-badge">Left / Right / Both</span></td>
+                        <td><code>N/A</code></td>
+                        <td>Tendon stressing configuration. Stressing both ends significantly decreases friction loss peaks.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Anchor Set</strong></td>
+                        <td><span class="range-badge">0 - 1.5 cm</span></td>
+                        <td><code>N/A</code></td>
+                        <td>Anchorage slip draw-in distance. Causes reversed friction loss starting from the stressed end.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Curvature Coeff (&mu;)</strong></td>
+                        <td><span class="range-badge">0.05 - 0.30</span></td>
+                        <td><code>N/A</code></td>
+                        <td>Friction coefficient representing steel sliding inside the duct per unit angle of deviation.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Wobble Coeff (k)</strong></td>
+                        <td><span class="range-badge">0.0005 - 0.005</span></td>
+                        <td><code>N/A</code></td>
+                        <td>Accidental wobble misalignment factor representing drag per unit length.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Tendon X & Y Spacing</strong></td>
+                        <td><span class="range-badge">0.5 - 5.0 m</span></td>
+                        <td><code>N/A</code></td>
+                        <td>Average spacing between adjacent strands in the grid, used for calculating balanced pressure fields.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Duct Outer Diameter</strong></td>
+                        <td><span class="range-badge">1.0 - 15.0 cm</span></td>
+                        <td><code>TF_DuctDiameter</code> <br><small style="color:var(--text-muted)">(Length)</small></td>
+                        <td>Outer diameter of the duct enclosing the strands. Decreases the available vertical drape height.</td>
+                    </tr>
+                </tbody>
+            </table>
         </section>
+
 
         <!-- Section: Trajectory Editing -->
         <section id="trajectory" class="doc-section">
@@ -875,17 +1100,45 @@
                 <div class="parameter-card">
                     <h4>Support Clearances <span class="range">From Top</span></h4>
                     <p><strong>Support S0, S1, S2 Clearance:</strong> The distance measured from the <strong>top face of the slab</strong> down to the tendon centerline. Decreasing this value pushes the tendon closer to the top face (increasing the tendon elevation height over support columns).</p>
+                    <div class="revit-badge">Revit: TF_Support_0 to _3 (Length, measured above bottom of slab)</div>
                 </div>
                 <div class="parameter-card">
                     <h4>Mid-Span Low Points <span class="range">From Bottom</span></h4>
                     <p><strong>Height (Ht):</strong> The vertical distance measured from the <strong>bottom face of the slab</strong> up to the lowest point of the tendon centerline.<br>
                     <strong>Position (Pos x):</strong> The horizontal position of the lowest point, measured in meters from the left support of that respective span.</p>
+                    <div class="revit-badge">Revit: TF_LowPoint_1 to _3 (Length, measured above bottom of slab)</div>
                 </div>
                 <div class="parameter-card">
                     <h4>Support Slope Angles <span class="range">Entry / Exit</span></h4>
                     <p>Shows the slope angle (in degrees) of the tendon path as it enters and exits each column support. These are updated in real-time (e.g. <code>10.6°</code> or <code>8.3° | 5.3°</code>) to help verify structural bending checks.</p>
+                    <div class="revit-badge">Revit: N/A</div>
                 </div>
             </div>
+
+            <table class="field-detail-table">
+                <thead>
+                    <tr>
+                        <th style="width: 25%;">Field / Parameter</th>
+                        <th style="width: 15%;">Range / Unit</th>
+                        <th style="width: 30%;">Autodesk Revit Shared Parameter</th>
+                        <th style="width: 30%;">Functional Description & Behavior</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Support High Nodes (S0, S1, S2, S3)</strong></td>
+                        <td><span class="range-badge">h - coverTop - duct/2</span></td>
+                        <td><code>TF_Support_0</code><br><code>TF_Support_1</code><br><code>TF_Support_2</code><br><code>TF_Support_3</code> <br><small style="color:var(--text-muted)">(Length)</small></td>
+                        <td>Tendon profile elevation heights at column support points (measured relative to the bottom of the slab).</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Span Low Nodes (LP1, LP2, LP3)</strong></td>
+                        <td><span class="range-badge">coverBottom + duct/2</span></td>
+                        <td><code>TF_LowPoint_1</code><br><code>TF_LowPoint_2</code><br><code>TF_LowPoint_3</code> <br><small style="color:var(--text-muted)">(Length)</small></td>
+                        <td>Tendon profile elevation heights at low points of individual spans (measured relative to the bottom of the slab).</td>
+                    </tr>
+                </tbody>
+            </table>
             
             <div class="premium-alert" style="border-color: rgba(16, 185, 129, 0.2); background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));">
                 <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
@@ -895,6 +1148,7 @@
                 </div>
             </div>
         </section>
+
 
         <!-- Section: Perpendicular Tendons -->
         <section id="perpendicular" class="doc-section">
@@ -1115,8 +1369,18 @@
                             <button class="copy-cmd-btn" onclick="copyText('DRAWPLANF')">Copy</button>
                         </td>
                     </tr>
+                    <tr>
+                        <td style="font-family: monospace; font-weight: 600; color: #fb923c;">TENDONFLOW</td>
+                        <td>3D Drape Profile</td>
+                        <td>JSON Design File</td>
+                        <td>AutoCAD LISP command to load and draw tendon drape profile polylines on layer <code>TF_TENDON</code> and slab reference lines from an exported <code>.json</code> file.</td>
+                        <td style="text-align: center;">
+                            <button class="copy-cmd-btn" onclick="copyText('TENDONFLOW')">Copy</button>
+                        </td>
+                    </tr>
                 </tbody>
             </table>
+
         </section>
 
         <!-- Section: Use Cases -->
@@ -1186,17 +1450,87 @@
                     <li>Adjust your drape settings and click <strong>Import to Revit</strong> inside the window.</li>
                 </ol>
             </p>
-
             <h3>4. Modifying and Updating Tendon Geometry</h3>
             <p>Unlike standard direct shapes, TendonFlow maintains custom parameters on modeled generic models. To edit a tendon path after modeling:
                 <ol>
                     <li>Select the tendon element in Revit.</li>
-                    <li>In the Properties Palette, edit any clearance parameters under the <strong>Constraints</strong> group (e.g. <code>TF_Support_0</code> to <code>4</code>, <code>TF_LowPoint_1</code> to <code>3</code>, or <code>TF_SpanLength_1</code> to <code>3</code>).</li>
+                    <li>In the Properties Palette, edit any clearance parameters under the <strong>Constraints</strong> group (e.g. <code>TF_Support_0</code> to <code>3</code>, <code>TF_LowPoint_1</code> to <code>3</code>, or <code>TF_SpanLength_1</code> to <code>3</code>).</li>
                     <li>Click the <strong>Update Tendon</strong> button on the TendonFlow tab.</li>
                     <li>TendonFlow will dynamically recalculate the curve and update the 3D swept duct element immediately!</li>
                 </ol>
             </p>
+
+
+            <h3 style="margin-top: 2rem;">5. Revit Shared Parameters Reference</h3>
+            <p>The pyRevit extension creates and updates the following shared parameters on the <strong>Generic Models</strong> category for Tendons. You can use these parameters directly in Revit schedules, tags, and filters:</p>
+            <table class="field-detail-table">
+                <thead>
+                    <tr>
+                        <th style="width: 35%;">Parameter Name</th>
+                        <th style="width: 20%;">Type</th>
+                        <th style="width: 45%;">Description & Revit Behavior</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>TF_LineID</code></td>
+                        <td>Text</td>
+                        <td>The Revit UniqueID of the selected model line representing the tendon's horizontal plan trajectory.</td>
+                    </tr>
+                    <tr>
+                        <td><code>TF_SlabID</code></td>
+                        <td>Text</td>
+                        <td>The Revit UniqueID of the floor slab host element hosting the tendon.</td>
+                    </tr>
+                    <tr>
+                        <td><code>TF_SlabThickness</code></td>
+                        <td>Length</td>
+                        <td>The thickness of the floor slab at the tendon location. Automatically read from the host floor.</td>
+                    </tr>
+                    <tr>
+                        <td><code>TF_TendonForce</code></td>
+                        <td>Number</td>
+                        <td>The prestressing jacking force ($P_0$) in kN. Used for structural annotation and scheduling.</td>
+                    </tr>
+                    <tr>
+                        <td><code>TF_DuctDiameter</code></td>
+                        <td>Length</td>
+                        <td>The outer diameter of the post-tensioning duct. Controls the cross-sectional sweep radius of the Revit 3D solid tendon shape.</td>
+                    </tr>
+                    <tr>
+                        <td><code>TF_CoverTop</code></td>
+                        <td>Length</td>
+                        <td>The minimum concrete cover requirement from the top face of the slab.</td>
+                    </tr>
+                    <tr>
+                        <td><code>TF_CoverBottom</code></td>
+                        <td>Length</td>
+                        <td>The minimum concrete cover requirement from the bottom face of the slab.</td>
+                    </tr>
+                    <tr>
+                        <td><code>TF_InflectionRatio</code></td>
+                        <td>Number</td>
+                        <td>The inflection ratio ($a/L$) controlling the curvature shape transitions.</td>
+                    </tr>
+                    <tr>
+                        <td><code>TF_Support_0</code> to <code>TF_Support_3</code></td>
+                        <td>Length</td>
+                        <td>Tendon profile heights at supports, measured upwards from the bottom of the slab. Edit these values in Revit and click <strong>Update Tendon</strong> to rebuild the 3D geometry!</td>
+                    </tr>
+                    <tr>
+                        <td><code>TF_LowPoint_1</code> to <code>TF_LowPoint_3</code></td>
+                        <td>Length</td>
+                        <td>Tendon profile heights at midspan low points, measured upwards from the bottom of the slab. Edit these and click <strong>Update Tendon</strong> to rebuild!</td>
+                    </tr>
+                    <tr>
+                        <td><code>TF_SpanLength_1</code> to <code>TF_SpanLength_3</code></td>
+                        <td>Length</td>
+                        <td>The physical span lengths of each span in the continuous system. Automatically set by the span detector.</td>
+                    </tr>
+                </tbody>
+            </table>
         </section>
+
         
         <!-- Document Footer -->
         <footer class="doc-footer" style="margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); text-align: center; font-size: 0.85rem; color: var(--text-secondary);">
