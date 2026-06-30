@@ -5867,3 +5867,6 @@ function showParamHelp(key) {
 
 // Start the Application
 window.addEventListener('DOMContentLoaded', init);
+
+// Expose state globally for Revit direct bridge access
+window.getTendonFlowState = () => state;
