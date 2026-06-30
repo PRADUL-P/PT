@@ -227,9 +227,6 @@ function showRevitSyncPopup(rawData) {
 
         // Focus/blur via addEventListener — reliable in all contexts
         inp.addEventListener('focus', () => {
-            // Stop countdown as soon as user starts editing
-            clearInterval(window._syncCountdown);
-            if (countdown) { countdown.textContent = 'Editing…'; }
             inp.style.borderColor = '#38bdf8';
             inp.style.boxShadow   = '0 0 0 3px rgba(56,189,248,0.18)';
             row.style.borderColor = '#0369a1';
@@ -265,6 +262,21 @@ function showRevitSyncPopup(rawData) {
 
     // Show modal
     modal.style.display = 'block';
+
+    // ---- Stop countdown the moment the user interacts with the modal ----
+    // mousedown fires BEFORE focus — most reliable in WebView2/WPF context
+    function stopCountdown() {
+        if (!window._syncCountdown) return;   // already stopped
+        clearInterval(window._syncCountdown);
+        window._syncCountdown = null;
+        const cd = document.getElementById('revit-sync-countdown');
+        if (cd) cd.textContent = 'Editing… click Apply when done';
+    }
+    // Any click inside the modal card stops it
+    container.addEventListener('mousedown', stopCountdown);
+    // Any key press (e.g. Tab into input) stops it
+    modal.addEventListener('keydown', stopCountdown, { once: true });
+    // -----------------------------------------------------------------------
 
     // Wire Apply button (set dynamically so it closes the right data)
     window._revitApplyFn = function() {
