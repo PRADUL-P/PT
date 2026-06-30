@@ -227,6 +227,9 @@ function showRevitSyncPopup(rawData) {
 
         // Focus/blur via addEventListener — reliable in all contexts
         inp.addEventListener('focus', () => {
+            // Stop countdown as soon as user starts editing
+            clearInterval(window._syncCountdown);
+            if (countdown) { countdown.textContent = 'Editing…'; }
             inp.style.borderColor = '#38bdf8';
             inp.style.boxShadow   = '0 0 0 3px rgba(56,189,248,0.18)';
             row.style.borderColor = '#0369a1';
