@@ -161,6 +161,47 @@ function init() {
     setupRevitBridge();
 }
 
+// --------------- Revit Sync Data Popup ---------------
+function showRevitSyncPopup(rows) {
+    const container = document.getElementById('revit-sync-rows');
+    const modal     = document.getElementById('revit-sync-modal');
+    const countdown = document.getElementById('revit-sync-countdown');
+    if (!container || !modal) return;
+
+    // Build data rows HTML
+    const icons = { 'Line Length': '📏', 'Slab Thickness': '🧱', 'Spans': '🔢', default: '📐' };
+    container.innerHTML = rows.map(r => {
+        const icon = icons[r.label] || icons.default;
+        return `
+        <div style="display:flex;align-items:center;justify-content:space-between;background:#0c1a2e;border:1px solid #1e3a5f;border-radius:10px;padding:0.75rem 1rem;">
+            <div style="display:flex;align-items:center;gap:0.6rem;">
+                <span style="font-size:1.1rem;">${icon}</span>
+                <span style="color:#94a3b8;font-size:0.82rem;font-weight:500;">${r.label}</span>
+            </div>
+            <span style="color:#f1f5f9;font-weight:700;font-size:0.95rem;font-family:'JetBrains Mono',monospace;">${r.value}</span>
+        </div>`;
+    }).join('');
+
+    // Show modal
+    modal.style.display = 'block';
+
+    // Auto-close countdown (8 seconds)
+    clearInterval(window._syncCountdown);
+    let secs = 8;
+    countdown.textContent = `Auto-close in ${secs}s`;
+    window._syncCountdown = setInterval(() => {
+        secs--;
+        if (secs <= 0) {
+            clearInterval(window._syncCountdown);
+            modal.style.display = 'none';
+            countdown.textContent = '';
+        } else {
+            countdown.textContent = `Auto-close in ${secs}s`;
+        }
+    }, 1000);
+}
+// ------------------------------------------------------
+
 function setupRevitBridge() {
     // Use a dedicated function to register the listener once we know webview is ready
     function registerListener() {
@@ -199,13 +240,14 @@ function setupRevitBridge() {
                     rebuildColumnLayout();
                     calculateAndRender();
                     
-                    // Show a non-blocking toast
-                    const toastEl = document.getElementById('revit-sync-toast');
-                    if (toastEl) {
-                        toastEl.textContent = `✅ Revit sync: ${state.slabThickness}mm slab, ${length.toFixed(2)}m tendon`;
-                        toastEl.style.display = 'block';
-                        setTimeout(() => { toastEl.style.display = 'none'; }, 4000);
-                    }
+                    // Show popup with all loaded data
+                    const spanRows = state.spanLengths.map((l, i) => ({ label: `Span ${i+1} Length`, value: `${l.toFixed(2)} m` }));
+                    showRevitSyncPopup([
+                        { label: 'Line Length',    value: `${length.toFixed(2)} m` },
+                        { label: 'Slab Thickness', value: `${state.slabThickness} mm` },
+                        { label: 'Spans',          value: `${state.numSpans} span${state.numSpans > 1 ? 's' : ''}` },
+                        ...spanRows
+                    ]);
                 } else if (data.action === 'line_selected') {
                     const length = data.length;
                     if (state.numSpans === 1) {
