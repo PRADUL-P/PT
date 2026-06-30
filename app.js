@@ -162,41 +162,111 @@ function init() {
 }
 
 // --------------- Revit Sync Data Popup ---------------
-function showRevitSyncPopup(rows) {
+// rawData = { lineLength, slabThickness, numSpans, spanLengths[] }
+function showRevitSyncPopup(rawData) {
     const container = document.getElementById('revit-sync-rows');
     const modal     = document.getElementById('revit-sync-modal');
     const countdown = document.getElementById('revit-sync-countdown');
     if (!container || !modal) return;
 
-    // Build data rows HTML
-    const icons = { 'Line Length': '📏', 'Slab Thickness': '🧱', 'Spans': '🔢', default: '📐' };
-    container.innerHTML = rows.map(r => {
-        const icon = icons[r.label] || icons.default;
-        return `
-        <div style="display:flex;align-items:center;justify-content:space-between;background:#0c1a2e;border:1px solid #1e3a5f;border-radius:10px;padding:0.75rem 1rem;">
+    const inputStyle = [
+        'background:#071120',
+        'border:1.5px solid #0369a1',
+        'border-radius:7px',
+        'color:#f1f5f9',
+        'font-family:\'JetBrains Mono\',monospace',
+        'font-size:0.9rem',
+        'font-weight:700',
+        'padding:0.3rem 0.6rem',
+        'width:100px',
+        'text-align:right',
+        'outline:none',
+        'transition:border-color 0.2s'
+    ].join(';');
+
+    const readonlyRowHTML = (icon, label, value) => `
+        <div style="display:flex;align-items:center;justify-content:space-between;background:#0c1a2e;border:1px solid #1e293b;border-radius:10px;padding:0.7rem 1rem;">
             <div style="display:flex;align-items:center;gap:0.6rem;">
-                <span style="font-size:1.1rem;">${icon}</span>
-                <span style="color:#94a3b8;font-size:0.82rem;font-weight:500;">${r.label}</span>
+                <span style="font-size:1.05rem;">${icon}</span>
+                <span style="color:#64748b;font-size:0.8rem;font-weight:500;">${label}</span>
             </div>
-            <span style="color:#f1f5f9;font-weight:700;font-size:0.95rem;font-family:'JetBrains Mono',monospace;">${r.value}</span>
+            <span style="color:#94a3b8;font-weight:600;font-size:0.88rem;font-family:'JetBrains Mono',monospace;">${value}</span>
         </div>`;
-    }).join('');
+
+    const editRowHTML = (icon, label, inputId, val, unit) => `
+        <div style="display:flex;align-items:center;justify-content:space-between;background:#0c1a2e;border:1px solid #1e3a5f;border-radius:10px;padding:0.7rem 1rem;">
+            <div style="display:flex;align-items:center;gap:0.6rem;">
+                <span style="font-size:1.05rem;">${icon}</span>
+                <span style="color:#94a3b8;font-size:0.8rem;font-weight:500;">${label}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:0.4rem;">
+                <input id="${inputId}" type="number" step="0.01" min="0" value="${val}" style="${inputStyle}"
+                    onfocus="this.style.borderColor='#38bdf8'" onblur="this.style.borderColor='#0369a1'">
+                <span style="color:#475569;font-size:0.78rem;font-weight:600;min-width:24px;">${unit}</span>
+            </div>
+        </div>`;
+
+    // Build rows — info rows (readonly) + editable rows
+    let html = '';
+    html += readonlyRowHTML('📏', 'Line Length (from Revit)', `${rawData.lineLength.toFixed(2)} m`);
+    html += editRowHTML('🧱', 'Slab Thickness', 'rsm-thickness', Math.round(rawData.slabThickness), 'mm');
+    html += readonlyRowHTML('🔢', 'Number of Spans', `${rawData.numSpans}`);
+    rawData.spanLengths.forEach((l, i) => {
+        html += editRowHTML('📐', `Span ${i + 1} Length`, `rsm-span-${i}`, l.toFixed(2), 'm');
+    });
+    container.innerHTML = html;
 
     // Show modal
     modal.style.display = 'block';
 
-    // Auto-close countdown (8 seconds)
+    // Wire Apply button (set dynamically so it closes the right data)
+    window._revitApplyFn = function() {
+        clearInterval(window._syncCountdown);
+
+        // Read slab thickness
+        const tEl = document.getElementById('rsm-thickness');
+        if (tEl) {
+            const t = parseFloat(tEl.value);
+            if (!isNaN(t) && t > 0) {
+                state.slabThickness = Math.round(t);
+                if (DOM.slabThickness) DOM.slabThickness.value = state.slabThickness;
+            }
+        }
+
+        // Read span lengths
+        rawData.spanLengths.forEach((_, i) => {
+            const el = document.getElementById(`rsm-span-${i}`);
+            if (el) {
+                const v = parseFloat(el.value);
+                if (!isNaN(v) && v > 0) state.spanLengths[i] = v;
+            }
+        });
+
+        // Push span lengths back into DOM inputs
+        const domInputs = [DOM.span1Len, DOM.span2Len, DOM.span3Len];
+        state.spanLengths.forEach((l, idx) => { if (domInputs[idx]) domInputs[idx].value = l.toFixed(2); });
+
+        // Re-render
+        syncColumnsFromSpanLengths();
+        updateInputUnitBounds();
+        rebuildColumnLayout();
+        calculateAndRender();
+
+        modal.style.display = 'none';
+    };
+
+    // Countdown — 15 seconds then auto-apply
     clearInterval(window._syncCountdown);
-    let secs = 8;
-    countdown.textContent = `Auto-close in ${secs}s`;
+    let secs = 15;
+    countdown.textContent = `Auto-apply in ${secs}s`;
     window._syncCountdown = setInterval(() => {
         secs--;
         if (secs <= 0) {
             clearInterval(window._syncCountdown);
-            modal.style.display = 'none';
             countdown.textContent = '';
+            window._revitApplyFn && window._revitApplyFn();
         } else {
-            countdown.textContent = `Auto-close in ${secs}s`;
+            countdown.textContent = `Auto-apply in ${secs}s`;
         }
     }, 1000);
 }
@@ -240,14 +310,13 @@ function setupRevitBridge() {
                     rebuildColumnLayout();
                     calculateAndRender();
                     
-                    // Show popup with all loaded data
-                    const spanRows = state.spanLengths.map((l, i) => ({ label: `Span ${i+1} Length`, value: `${l.toFixed(2)} m` }));
-                    showRevitSyncPopup([
-                        { label: 'Line Length',    value: `${length.toFixed(2)} m` },
-                        { label: 'Slab Thickness', value: `${state.slabThickness} mm` },
-                        { label: 'Spans',          value: `${state.numSpans} span${state.numSpans > 1 ? 's' : ''}` },
-                        ...spanRows
-                    ]);
+                    // Show editable popup — user can tweak values before applying
+                    showRevitSyncPopup({
+                        lineLength:     length,
+                        slabThickness:  thickness,
+                        numSpans:       state.numSpans,
+                        spanLengths:    [...state.spanLengths]
+                    });
                 } else if (data.action === 'line_selected') {
                     const length = data.length;
                     if (state.numSpans === 1) {
