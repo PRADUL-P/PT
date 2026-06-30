@@ -263,24 +263,29 @@ function showRevitSyncPopup(rawData) {
     // Show modal
     modal.style.display = 'block';
 
-    // ---- Stop countdown the moment the user interacts with the modal ----
-    // mousedown fires BEFORE focus — most reliable in WebView2/WPF context
+    // ---- Countdown: closure variable so stop is always reliable ----
+    let timerId = null;          // shared by interval + stopCountdown
+    let stopped  = false;
+
     function stopCountdown() {
-        if (!window._syncCountdown) return;   // already stopped
-        clearInterval(window._syncCountdown);
+        if (stopped) return;
+        stopped = true;
+        clearInterval(timerId);
         window._syncCountdown = null;
         const cd = document.getElementById('revit-sync-countdown');
-        if (cd) cd.textContent = 'Editing… click Apply when done';
+        if (cd) cd.textContent = '✏ Editing — click Apply when done';
     }
-    // Any click inside the modal card stops it
-    container.addEventListener('mousedown', stopCountdown);
-    // Any key press (e.g. Tab into input) stops it
-    modal.addEventListener('keydown', stopCountdown, { once: true });
-    // -----------------------------------------------------------------------
 
-    // Wire Apply button (set dynamically so it closes the right data)
+    // Attach to the WHOLE modal overlay, capture phase, multiple event types
+    // so it fires no matter what the user does first
+    ['mousedown', 'click', 'keydown', 'touchstart'].forEach(evt => {
+        modal.addEventListener(evt, stopCountdown, { capture: true, once: true });
+    });
+    // ----------------------------------------------------------------
+
+    // Wire Apply button
     window._revitApplyFn = function() {
-        clearInterval(window._syncCountdown);
+        stopCountdown();
 
         // Read slab thickness
         const tEl = document.getElementById('rsm-thickness');
@@ -314,20 +319,21 @@ function showRevitSyncPopup(rawData) {
         modal.style.display = 'none';
     };
 
-    // Countdown — 15 seconds then auto-apply
-    clearInterval(window._syncCountdown);
+    // Countdown — 15 s then auto-apply (only if user never interacted)
     let secs = 15;
     countdown.textContent = `Auto-apply in ${secs}s`;
-    window._syncCountdown = setInterval(() => {
+    timerId = setInterval(() => {
+        if (stopped) { clearInterval(timerId); return; }   // safety net
         secs--;
         if (secs <= 0) {
-            clearInterval(window._syncCountdown);
+            clearInterval(timerId);
             countdown.textContent = '';
             window._revitApplyFn && window._revitApplyFn();
         } else {
             countdown.textContent = `Auto-apply in ${secs}s`;
         }
     }, 1000);
+    window._syncCountdown = timerId;   // keep for external cancel (Cancel button)
 }
 // ------------------------------------------------------
 
