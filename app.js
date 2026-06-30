@@ -183,6 +183,56 @@ function setupRevitBridge() {
                     console.log("Sending data to Revit:", payload);
                     window.chrome.webview.postMessage(payload);
                     console.log("window.chrome.webview.postMessage executed.");
+                    
+                    // Automatically download the JSON configuration file as well
+                    try {
+                        const defaultName = 'pt_slab_design_sync';
+                        const dataToSave = {
+                            name: defaultName,
+                            timestamp: new Date().toISOString(),
+                            version: '1.0',
+                            state: {
+                                numSpans: state.numSpans,
+                                unit: state.unit,
+                                slabThickness: state.slabThickness,
+                                concreteDensity: state.concreteDensity,
+                                spanLengths: state.spanLengths,
+                                slabWidth: state.slabWidth,
+                                spanYLen: state.spanYLen,
+                                coverTop: state.coverTop,
+                                coverBottom: state.coverBottom,
+                                inflectionRatio: state.inflectionRatio,
+                                tendonForce: state.tendonForce,
+                                jackingEnd: state.jackingEnd,
+                                frictionMu: state.frictionMu,
+                                frictionK: state.frictionK,
+                                anchorSet: state.anchorSet,
+                                tendonSpacingX: state.tendonSpacingX,
+                                tendonSpacingY: state.tendonSpacingY,
+                                selectedRowIdx: state.selectedRowIdx,
+                                controlPointsRows: state.controlPointsRows.map(cp => ({
+                                    supports: cp.supports,
+                                    lowPoints: cp.lowPoints.map(lp => ({ xFract: lp.xFract, y: lp.y }))
+                                })),
+                                planXTendons: state.planXTendons,
+                                planYTendons: state.planYTendons,
+                                planColumns: state.planColumns,
+                                ductDiameter: state.ductDiameter
+                            }
+                        };
+                        const jsonString = JSON.stringify(dataToSave, null, 2);
+                        const blob = new Blob([jsonString], { type: 'application/json;charset=utf-8;' });
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.setAttribute('href', url);
+                        link.setAttribute('download', `${defaultName}.json`);
+                        link.style.visibility = 'hidden';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    } catch (dlErr) {
+                        console.error("Auto download failed:", dlErr);
+                    }
                 } catch (err) {
                     console.error("JS postMessage Error:", err);
                     alert("JS postMessage Error: " + err.message);
@@ -5867,6 +5917,3 @@ function showParamHelp(key) {
 
 // Start the Application
 window.addEventListener('DOMContentLoaded', init);
-
-// Expose state globally for Revit direct bridge access
-window.getTendonFlowState = () => state;
