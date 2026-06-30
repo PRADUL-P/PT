@@ -169,52 +169,96 @@ function showRevitSyncPopup(rawData) {
     const countdown = document.getElementById('revit-sync-countdown');
     if (!container || !modal) return;
 
-    const inputStyle = [
-        'background:#071120',
-        'border:1.5px solid #0369a1',
-        'border-radius:7px',
-        'color:#f1f5f9',
-        'font-family:\'JetBrains Mono\',monospace',
-        'font-size:0.9rem',
-        'font-weight:700',
-        'padding:0.3rem 0.6rem',
-        'width:100px',
-        'text-align:right',
-        'outline:none',
-        'transition:border-color 0.2s'
-    ].join(';');
+    // ---- Build rows using DOM API (not innerHTML) so inputs are fully interactive ----
+    container.innerHTML = '';   // clear previous
 
-    const readonlyRowHTML = (icon, label, value) => `
-        <div style="display:flex;align-items:center;justify-content:space-between;background:#0c1a2e;border:1px solid #1e293b;border-radius:10px;padding:0.7rem 1rem;">
+    function makeReadonlyRow(icon, label, value) {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;background:#0c1a2e;border:1px solid #1e293b;border-radius:10px;padding:0.7rem 1rem;';
+        row.innerHTML = `
             <div style="display:flex;align-items:center;gap:0.6rem;">
                 <span style="font-size:1.05rem;">${icon}</span>
                 <span style="color:#64748b;font-size:0.8rem;font-weight:500;">${label}</span>
             </div>
-            <span style="color:#94a3b8;font-weight:600;font-size:0.88rem;font-family:'JetBrains Mono',monospace;">${value}</span>
-        </div>`;
+            <span style="color:#94a3b8;font-weight:600;font-size:0.88rem;font-family:'JetBrains Mono',monospace;">${value}</span>`;
+        return row;
+    }
 
-    const editRowHTML = (icon, label, inputId, val, unit) => `
-        <div style="display:flex;align-items:center;justify-content:space-between;background:#0c1a2e;border:1px solid #1e3a5f;border-radius:10px;padding:0.7rem 1rem;">
-            <div style="display:flex;align-items:center;gap:0.6rem;">
-                <span style="font-size:1.05rem;">${icon}</span>
-                <span style="color:#94a3b8;font-size:0.8rem;font-weight:500;">${label}</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:0.4rem;">
-                <input id="${inputId}" type="number" step="0.01" min="0" value="${val}" style="${inputStyle}"
-                    onfocus="this.style.borderColor='#38bdf8'" onblur="this.style.borderColor='#0369a1'">
-                <span style="color:#475569;font-size:0.78rem;font-weight:600;min-width:24px;">${unit}</span>
-            </div>
-        </div>`;
+    function makeEditRow(icon, label, inputId, val, unit) {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;background:#0c1a2e;border:1.5px solid #1e3a5f;border-radius:10px;padding:0.7rem 1rem;transition:border-color 0.2s;';
 
-    // Build rows — info rows (readonly) + editable rows
-    let html = '';
-    html += readonlyRowHTML('📏', 'Line Length (from Revit)', `${rawData.lineLength.toFixed(2)} m`);
-    html += editRowHTML('🧱', 'Slab Thickness', 'rsm-thickness', Math.round(rawData.slabThickness), 'mm');
-    html += readonlyRowHTML('🔢', 'Number of Spans', `${rawData.numSpans}`);
+        const left = document.createElement('div');
+        left.style.cssText = 'display:flex;align-items:center;gap:0.6rem;';
+        left.innerHTML = `<span style="font-size:1.05rem;">${icon}</span>
+                          <span style="color:#94a3b8;font-size:0.8rem;font-weight:500;">${label}</span>`;
+
+        const right = document.createElement('div');
+        right.style.cssText = 'display:flex;align-items:center;gap:0.5rem;';
+
+        // ✏ pencil icon to signal editability
+        const pencil = document.createElement('span');
+        pencil.textContent = '✏';
+        pencil.style.cssText = 'font-size:0.7rem;opacity:0.45;cursor:text;';
+
+        // Build input via createElement — ensures it is fully interactive in WebView2
+        const inp = document.createElement('input');
+        inp.id   = inputId;
+        inp.type = 'text';              // text is universally editable; we validate on apply
+        inp.inputMode = 'decimal';
+        inp.value = String(val);
+        inp.style.cssText = [
+            'background:#071120',
+            'border:1.5px solid #0369a1',
+            'border-radius:7px',
+            'color:#f1f5f9',
+            'font-size:0.9rem',
+            'font-weight:700',
+            'padding:0.3rem 0.7rem',
+            'width:90px',
+            'text-align:right',
+            'outline:none',
+            'cursor:text',
+            'pointer-events:auto',
+            'user-select:text',
+            '-webkit-user-select:text',
+            'transition:border-color 0.15s,box-shadow 0.15s'
+        ].join(';');
+
+        // Focus/blur via addEventListener — reliable in all contexts
+        inp.addEventListener('focus', () => {
+            inp.style.borderColor = '#38bdf8';
+            inp.style.boxShadow   = '0 0 0 3px rgba(56,189,248,0.18)';
+            row.style.borderColor = '#0369a1';
+        });
+        inp.addEventListener('blur', () => {
+            inp.style.borderColor = '#0369a1';
+            inp.style.boxShadow   = 'none';
+            row.style.borderColor = '#1e3a5f';
+        });
+        // Select all on click for fast editing
+        inp.addEventListener('click', () => inp.select());
+
+        const unitSpan = document.createElement('span');
+        unitSpan.textContent = unit;
+        unitSpan.style.cssText = 'color:#475569;font-size:0.78rem;font-weight:600;min-width:22px;';
+
+        right.appendChild(pencil);
+        right.appendChild(inp);
+        right.appendChild(unitSpan);
+        row.appendChild(left);
+        row.appendChild(right);
+        return row;
+    }
+
+    // Info rows (readonly)
+    container.appendChild(makeReadonlyRow('📏', 'Line Length (from Revit)', `${rawData.lineLength.toFixed(2)} m`));
+    // Editable rows
+    container.appendChild(makeEditRow('🧱', 'Slab Thickness', 'rsm-thickness', Math.round(rawData.slabThickness), 'mm'));
+    container.appendChild(makeReadonlyRow('🔢', 'Number of Spans', `${rawData.numSpans}`));
     rawData.spanLengths.forEach((l, i) => {
-        html += editRowHTML('📐', `Span ${i + 1} Length`, `rsm-span-${i}`, l.toFixed(2), 'm');
+        container.appendChild(makeEditRow('📐', `Span ${i + 1} Length`, `rsm-span-${i}`, l.toFixed(2), 'm'));
     });
-    container.innerHTML = html;
 
     // Show modal
     modal.style.display = 'block';
