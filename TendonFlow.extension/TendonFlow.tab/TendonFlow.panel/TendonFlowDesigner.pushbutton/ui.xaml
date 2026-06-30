@@ -1,0 +1,17 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="TendonFlow Live Revit Designer" Height="800" Width="1200"
+        WindowStartupLocation="CenterScreen" Background="#070b13">
+    <Grid>
+        <DockPanel>
+            <Border Height="45" Background="#0f172a" DockPanel.Dock="Top" BorderThickness="0,0,0,1" BorderBrush="#1e293b">
+                <DockPanel LastChildFill="False">
+                    <TextBlock Text="TendonFlow BIM Bridge" Foreground="#38bdf8" VerticalAlignment="Center" Margin="15,0,0,0" FontWeight="Bold" FontSize="14"/>
+                    <Button Name="btnSelectLine" Content="🔗 Select Revit Slab &amp; Line" DockPanel.Dock="Right" Margin="0,8,15,8" Padding="15,0,15,0" Background="#0284c7" Foreground="White" BorderThickness="0" FontWeight="SemiBold" Cursor="Hand"/>
+                    <Button Name="btnImportJson" Content="⬇ Download Design JSON" DockPanel.Dock="Right" Margin="0,8,10,8" Padding="15,0,15,0" Background="#8b5cf6" Foreground="White" BorderThickness="0" FontWeight="SemiBold" Cursor="Hand"/>
+                </DockPanel>
+            </Border>
+            <Grid Name="webGrid"/>
+        </DockPanel>
+    </Grid>
+</Window>
