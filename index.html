@@ -88,6 +88,21 @@
                     </div>
                 </div>
 
+                <div class="toolbar-sep"></div>
+
+                <!-- Group: Extra Features -->
+                <div class="toolbar-group">
+                    <span class="toolbar-group-label">Extra Features</span>
+                    <div class="toolbar-group-btns">
+                        <button id="btn-export-3d-cad" class="btn btn-tool btn-tool-teal" title="Export 3D CAD DXF Model">
+                            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                            3D CAD Model
+                        </button>
+                    </div>
+                </div>
+
+
+
             </div><!-- /.header-toolbar -->
         </header>
 
@@ -163,6 +178,37 @@
                 </div>
 
                 <div class="panel-section">
+                    <h2 style="display:flex;align-items:center;gap:0.4rem;">
+                        Corner Elevations (Bottom Z)
+                        <button class="btn-param-help" data-help-key="corner-elevations" title="Parameter descriptions">?</button>
+                        <input type="checkbox" id="enable-corner-elevations" style="margin-left:auto; width:14px; height:14px;" title="Enable slab corner Z slopes">
+                        <span style="font-size:0.65rem; font-weight:normal; color:#94a3b8; text-transform:none;">Enable</span>
+                    </h2>
+                    <div id="corner-elevations-container" style="display:none; flex-direction:column; gap:0.5rem; margin-top:0.5rem;">
+                        <div class="form-row">
+                            <div class="form-group col">
+                                <label for="z-corner-bl">BL (0,0) (mm)</label>
+                                <input type="number" id="z-corner-bl" class="form-control" value="0" step="50">
+                            </div>
+                            <div class="form-group col">
+                                <label for="z-corner-br">BR (L,0) (mm)</label>
+                                <input type="number" id="z-corner-br" class="form-control" value="0" step="50">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col">
+                                <label for="z-corner-tr">TR (L,W) (mm)</label>
+                                <input type="number" id="z-corner-tr" class="form-control" value="0" step="50">
+                            </div>
+                            <div class="form-group col">
+                                <label for="z-corner-tl">TL (0,W) (mm)</label>
+                                <input type="number" id="z-corner-tl" class="form-control" value="0" step="50">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel-section">
                     <h2 style="display:flex;align-items:center;gap:0.4rem;">Concrete Cover & Clearances <button class="btn-param-help" data-help-key="concrete-cover" title="Parameter descriptions">?</button></h2>
                     <div class="form-row">
                         <div class="form-group col">
@@ -217,6 +263,22 @@
                         <div class="form-group col">
                             <label for="anchor-set">Anchor Set (<span class="unit-label-anchorset">cm</span>)</label>
                             <input type="number" id="anchor-set" class="form-control" value="0.6" min="0" max="1.5" step="0.1">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col">
+                            <label style="display:flex; align-items:center; gap:0.25rem;">
+                                Left End Angle (°)
+                                <input type="checkbox" id="left-end-angle-locked" style="margin-left:auto; width:13px; height:13px;" title="Lock Left End Angle"> Lock
+                            </label>
+                            <input type="number" id="left-end-angle" class="form-control" value="0.0" min="-20" max="20" step="0.5">
+                        </div>
+                        <div class="form-group col">
+                            <label style="display:flex; align-items:center; gap:0.25rem;">
+                                Right End Angle (°)
+                                <input type="checkbox" id="right-end-angle-locked" style="margin-left:auto; width:13px; height:13px;" title="Lock Right End Angle"> Lock
+                            </label>
+                            <input type="number" id="right-end-angle" class="form-control" value="0.0" min="-20" max="20" step="0.5">
                         </div>
                     </div>
                     <div class="form-row">
@@ -281,7 +343,7 @@
                 </div>
 
                 <div class="panel-section" id="section-perpendicular-tendons">
-                    <h2>Perpendicular Tendons</h2>
+                    <h2>Longitudinal Tendons</h2>
                     <div class="form-group">
                         <label for="num-tendon-sets">Number of Tendon Sets</label>
                         <input type="number" id="num-tendon-sets" class="form-control" value="4" min="0" max="10">
@@ -308,6 +370,7 @@
                             <select id="plan-x-tendons-mode" class="form-control">
                                 <option value="spacing" selected>Uniform Spacing</option>
                                 <option value="positions">Custom Y-Positions</option>
+                                <option value="sets">X-Tendon Sets</option>
                             </select>
                         </div>
                     </div>
@@ -318,6 +381,13 @@
                     <div id="group-plan-x-positions" class="form-group" style="display: none;">
                         <label for="input-plan-x-tendons">Y-Positions (m, comma-sep)</label>
                         <input type="text" id="input-plan-x-tendons" class="form-control" value="1.5, 3.0, 4.5, 6.0, 7.5, 9.0, 10.5">
+                    </div>
+                    <div id="group-plan-x-sets" class="form-group" style="display: none; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem;">
+                        <label for="num-x-tendon-sets">Number of X-Tendon Sets</label>
+                        <input type="number" id="num-x-tendon-sets" class="form-control" value="3" min="0" max="10">
+                        <div id="x-tendon-sets-container" style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem;">
+                            <!-- Dynamic X-Tendon Sets grouped by Column Row -->
+                        </div>
                     </div>
                     <div id="plan-y-tendons-container" style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem;">
                         <!-- Dynamic span inputs -->
@@ -373,6 +443,19 @@
                         </div>
                     </div>
                     <div class="visualizer-container" id="svg-container">
+                        <!-- Floating Zoom Controls for Profile View -->
+                        <div class="zoom-controls-overlay profile-zoom-controls">
+                            <button class="zoom-btn" id="btn-zoom-in-profile" title="Zoom In Profile">+</button>
+                            <button class="zoom-btn" id="btn-zoom-out-profile" title="Zoom Out Profile">-</button>
+                            <button class="zoom-btn" id="btn-zoom-reset-profile" title="Reset Profile Zoom">↺</button>
+                        </div>
+                        <!-- Floating Zoom Controls for Plan View -->
+                        <div class="zoom-controls-overlay plan-zoom-controls">
+                            <button class="zoom-btn" id="btn-zoom-in-plan" title="Zoom In Plan">+</button>
+                            <button class="zoom-btn" id="btn-zoom-out-plan" title="Zoom Out Plan">-</button>
+                            <button class="zoom-btn" id="btn-zoom-reset-plan" title="Reset Plan Zoom">↺</button>
+                        </div>
+                        
                         <!-- Responsive interactive SVG -->
                         <svg id="profile-svg" viewBox="0 0 1000 350" preserveAspectRatio="xMidYMid meet">
                             <!-- SVG contents will be dynamically generated by JS -->
@@ -458,7 +541,7 @@
                             </div>
                             <div class="check-content">
                                 <h4>Tendon Clash Detection</h4>
-                                <p id="check-tendon-clashes-desc">No clashes detected between longitudinal and perpendicular tendons.</p>
+                                <p id="check-tendon-clashes-desc">No clashes detected between longitudinal tendons.</p>
                             </div>
                         </div>
                     </div>

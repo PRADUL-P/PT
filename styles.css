@@ -509,6 +509,66 @@ label {
 .visualizer-container.split-active #plan-svg {
     display: block;
 }
+.plan-x-tendon-line {
+    pointer-events: stroke;
+    cursor: pointer;
+}
+
+/* Floating Zoom Controls */
+.zoom-controls-overlay {
+    position: absolute;
+    display: flex;
+    gap: 0.2rem;
+    z-index: 100;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    padding: 0.2rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    user-select: none;
+    transition: opacity 0.2s ease;
+}
+.profile-zoom-controls {
+    top: 8px;
+    right: 8px;
+}
+.plan-zoom-controls {
+    top: 8px;
+    right: 8px;
+}
+.visualizer-container.split-active .profile-zoom-controls {
+    top: 8px;
+    left: calc(50% - 100px);
+    right: auto;
+}
+.visualizer-container.split-active .plan-zoom-controls {
+    top: 8px;
+    right: 8px;
+}
+.zoom-btn {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.zoom-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #38bdf8;
+}
+
+#profile-svg, #plan-svg {
+    transition: transform 0.05s ease-out;
+}
 
 .svg-section-cut-overlay {
     cursor: ns-resize;

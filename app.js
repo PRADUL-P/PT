@@ -32,7 +32,24 @@ const state = {
     minSupportAngle: 2.0,     // degrees
     maxSupportAngle: 6.0,     // degrees
     elevationTendonSets: [],  // Perpendicular tendon sets in Elevation view
+    planXTendonSets: [],     // X-tendon sets in Plan view
+    clipboardXTendonSet: null, // copied X tendon set state
     ductDiameter: 25,         // mm
+    enableCornerElevations: false,
+    zCornerBL: 0,
+    zCornerBR: 0,
+    zCornerTR: 0,
+    zCornerTL: 0,
+    leftEndAngle: 0,
+    leftEndAngleLocked: false,
+    rightEndAngle: 0,
+    rightEndAngleLocked: false,
+    profileScale: 1.0,
+    profileTransX: 0,
+    profileTransY: 0,
+    planScale: 1.0,
+    planTransX: 0,
+    planTransY: 0,
 
     controlPoints: {
         // Supports heights (at x = 0, L1, L1+L2, L1+L2+L3)
@@ -116,7 +133,9 @@ const DOM = {
     btnExportCsv: document.getElementById('btn-export-csv'),
     btnExportSvg: document.getElementById('btn-export-svg'),
     btnExportAutocad: document.getElementById('btn-export-autocad'),
+    btnExport3dCad: document.getElementById('btn-export-3d-cad'),
     autocadModal: document.getElementById('autocad-modal'),
+
     btnCloseModal: document.getElementById('btn-close-modal'),
     btnCancelExport: document.getElementById('btn-cancel-export'),
     btnConfirmExport: document.getElementById('btn-confirm-export'),
@@ -144,8 +163,18 @@ const DOM = {
     checkSupportAngles: document.getElementById('check-support-angles'),
     checkSupportAnglesDesc: document.getElementById('check-support-angles-desc'),
     checkTendonClashes: document.getElementById('check-tendon-clashes'),
-    checkTendonClashesDesc: document.getElementById('check-tendon-clashes-desc'),
-    ductDiameter: document.getElementById('duct-diameter')
+    ductDiameter: document.getElementById('duct-diameter'),
+    enableCornerElevations: document.getElementById('enable-corner-elevations'),
+    zCornerBL: document.getElementById('z-corner-bl'),
+    zCornerBR: document.getElementById('z-corner-br'),
+    zCornerTR: document.getElementById('z-corner-tr'),
+    zCornerTL: document.getElementById('z-corner-tl'),
+    leftEndAngle: document.getElementById('left-end-angle'),
+    leftEndAngleLocked: document.getElementById('left-end-angle-locked'),
+    rightEndAngle: document.getElementById('right-end-angle'),
+    rightEndAngleLocked: document.getElementById('right-end-angle-locked'),
+    numXTendonSets: document.getElementById('num-x-tendon-sets'),
+    xTendonSetsContainer: document.getElementById('x-tendon-sets-container')
 };
 
 // SVG Drag State
@@ -159,6 +188,7 @@ function init() {
     resetDesign();
     calculateAndRender();
     setupRevitBridge();
+    setupZoomPan();
 }
 
 // --------------- Revit Sync Data Popup ---------------
@@ -447,39 +477,70 @@ function getBracketedUnit() {
 // Compute dynamic slope angle with horizontal in degrees at support i
 function getSupportAngles(i) {
     const angles = { left: null, right: null };
-    const ySi = state.controlPoints.supports[i];
+    const sectionIdx = state.selectedRowIdx;
     
+    let xSupport = 0;
+    for (let sIdx = 0; sIdx < i; sIdx++) {
+        xSupport += state.spanLengths[sIdx];
+    }
+
     // Left side angle (coming from span i - 1)
     if (i > 0) {
-        const spanIdx = i - 1;
-        const L = state.spanLengths[spanIdx];
-        const lp = state.controlPoints.lowPoints[spanIdx];
-        const xm = lp.xFract * L;
-        const ym = lp.y;
-        
-        const X2 = L - xm;
-        const Y2 = Math.abs(ySi - ym);
-        
-        const slope = (2 * Y2) / (1000 * X2);
-        angles.left = Math.atan(slope) * (180 / Math.PI);
+        if (i === state.numSpans && state.rightEndAngleLocked) {
+            // Exact derivative-based slope (locked end)
+            const profile = getTendonProfileForRow(xSupport - 0.0001, sectionIdx);
+            angles.left = Math.abs(Math.atan(profile.dy) * 180 / Math.PI);
+        } else {
+            // Legacy natural drape slope (unlocked or interior support)
+            const spanIdx = i - 1;
+            const L = state.spanLengths[spanIdx];
+            const lp = state.controlPoints.lowPoints[spanIdx];
+            const xm = lp.xFract * L;
+            const ym = lp.y;
+            const ySi = state.controlPoints.supports[i];
+            const X2 = L - xm;
+            const Y2 = Math.abs(ySi - ym);
+            const slope = (2 * Y2) / (1000 * X2);
+            angles.left = Math.atan(slope) * (180 / Math.PI);
+        }
     }
     
     // Right side angle (going to span i)
     if (i < state.numSpans) {
-        const spanIdx = i;
-        const L = state.spanLengths[spanIdx];
-        const lp = state.controlPoints.lowPoints[spanIdx];
-        const xm = lp.xFract * L;
-        const ym = lp.y;
-        
-        const X1 = xm;
-        const Y1 = Math.abs(ySi - ym);
-        
-        const slope = (2 * Y1) / (1000 * X1);
-        angles.right = Math.atan(slope) * (180 / Math.PI);
+        if (i === 0 && state.leftEndAngleLocked) {
+            // Exact derivative-based slope (locked end)
+            const profile = getTendonProfileForRow(xSupport + 0.0001, sectionIdx);
+            angles.right = Math.abs(Math.atan(profile.dy) * 180 / Math.PI);
+        } else {
+            // Legacy natural drape slope (unlocked or interior support)
+            const spanIdx = i;
+            const L = state.spanLengths[spanIdx];
+            const lp = state.controlPoints.lowPoints[spanIdx];
+            const xm = lp.xFract * L;
+            const ym = lp.y;
+            const ySi = state.controlPoints.supports[i];
+            const X1 = xm;
+            const Y1 = Math.abs(ySi - ym);
+            const slope = (2 * Y1) / (1000 * X1);
+            angles.right = Math.atan(slope) * (180 / Math.PI);
+        }
     }
     
     return angles;
+}
+
+// Check if support i violates the allowable angle limits
+function isSupportAngleViolating(i) {
+    const angles = getSupportAngles(i);
+    const minA = state.minSupportAngle;
+    const maxA = state.maxSupportAngle;
+    if (angles.left !== null && (angles.left < minA || angles.left > maxA)) {
+        return true;
+    }
+    if (angles.right !== null && (angles.right < minA || angles.right > maxA)) {
+        return true;
+    }
+    return false;
 }
 
 // Format support angles for the sidebar display
@@ -581,6 +642,21 @@ function getColumnPrefix(suppIdx, numSupports) {
         if (suppIdx === 2) return 'CMR';
         return 'CR';
     }
+}
+
+// Helper to get formatted display name of a row showing the columns it contains
+function getRowDisplayInfo(r) {
+    const numSupports = state.numSpans + 1;
+    const colNames = [];
+    for (let s = 0; s < numSupports; s++) {
+        const prefix = getColumnPrefix(s, numSupports);
+        colNames.push(`${prefix}${r + 1}`);
+    }
+    const info = getRowInfo(r, state.numColRows, state.slabWidth);
+    return {
+        label: `Row ${r + 1} (${colNames.join(', ')})`,
+        y: info.y
+    };
 }
 
 // Helper to get the X coordinate of a column by support and row indices
@@ -717,11 +793,16 @@ function getTendonProfileForRow(xGlobal, sectionIdx) {
     
     if (localX <= xm) {
         const X1 = xm;
-        const Y1 = yL - ym;
         const b1 = Math.max(0.05, Math.min(0.95, (aRatio * L) / X1));
         const xInf = b1 * X1;
-        const a1_low = Y1 / ((1 - b1) * X1 * X1);
-        const a1_supp = Y1 / (b1 * X1 * X1);
+        
+        let S = 0;
+        if (spanIndex === 0 && state.leftEndAngleLocked) {
+            S = Math.tan(state.leftEndAngle * Math.PI / 180);
+        }
+
+        const c1 = (ym - yL - 1000 * (S / 2) * (X1 + xInf)) / (xInf * X1);
+        const a1_low = -(1000 * S + 2 * c1 * xInf) / (2 * (X1 - xInf));
         
         if (localX >= xInf) {
             const dx = xm - localX;
@@ -730,17 +811,23 @@ function getTendonProfileForRow(xGlobal, sectionIdx) {
             ddy = 2 * a1_low;
         } else {
             const dx = localX;
-            y = yL - a1_supp * dx * dx;
-            dy = -2 * a1_supp * dx;
-            ddy = -2 * a1_supp;
+            y = yL + 1000 * S * dx + c1 * dx * dx;
+            dy = 1000 * S + 2 * c1 * dx;
+            ddy = 2 * c1;
         }
     } else {
         const X2 = L - xm;
-        const Y2 = yR - ym;
         const b2 = Math.max(0.05, Math.min(0.95, (aRatio * L) / X2));
         const xInf = L - b2 * X2;
-        const a2_low = Y2 / ((1 - b2) * X2 * X2);
-        const a2_supp = Y2 / (b2 * X2 * X2);
+        
+        let S = 0;
+        if (spanIndex === state.numSpans - 1 && state.rightEndAngleLocked) {
+            S = Math.tan(state.rightEndAngle * Math.PI / 180);
+        }
+
+        const dxInf = b2 * X2;
+        const c2 = (ym - yR - 1000 * (S / 2) * (X2 + dxInf)) / (dxInf * X2);
+        const a2_low = -(1000 * S + 2 * c2 * dxInf) / (2 * (X2 - dxInf));
         
         if (localX <= xInf) {
             const dx = localX - xm;
@@ -749,9 +836,9 @@ function getTendonProfileForRow(xGlobal, sectionIdx) {
             ddy = 2 * a2_low;
         } else {
             const dx = L - localX;
-            y = yR - a2_supp * dx * dx;
-            dy = 2 * a2_supp * dx;
-            ddy = -2 * a2_supp;
+            y = yR + 1000 * S * dx + c2 * dx * dx;
+            dy = -(1000 * S + 2 * c2 * dx);
+            ddy = 2 * c2;
         }
     }
     
@@ -797,6 +884,22 @@ function resetDesign() {
         { supportIdx: 1, direction: 'right', count: 4, spacing: defaultSpacing, offset: 0.20, height: defaultHeight },
         { supportIdx: Math.min(2, state.numSpans), direction: 'left', count: 2, spacing: defaultSpacing, offset: 0.20, height: defaultHeight }
     ];
+
+    state.planXTendonSets = [
+        { columnRowIdx: 0, direction: 'above', count: 2, spacing: 1.5, offset: 0.20 },
+        { columnRowIdx: 1, direction: 'above', count: 2, spacing: 1.5, offset: 0.20 },
+        { columnRowIdx: 2, direction: 'above', count: 2, spacing: 1.5, offset: 0.20 }
+    ];
+
+    state.enableCornerElevations = false;
+    state.zCornerBL = 0;
+    state.zCornerBR = 0;
+    state.zCornerTR = 0;
+    state.zCornerTL = 0;
+    state.leftEndAngle = 0;
+    state.leftEndAngleLocked = false;
+    state.rightEndAngle = 0;
+    state.rightEndAngleLocked = false;
     
     // Sync inputs with state
     syncStateToInputs();
@@ -968,6 +1071,20 @@ function syncInputsToState() {
         state.elevationTendonSets = state.elevationTendonSets.slice(0, count);
     }
 
+    if (DOM.numXTendonSets) {
+        const count = Math.max(0, parseInt(DOM.numXTendonSets.value) || 0);
+        while (state.planXTendonSets.length < count) {
+            state.planXTendonSets.push({
+                columnRowIdx: 0,
+                direction: 'above',
+                count: 2,
+                spacing: 1.5,
+                offset: 0.20
+            });
+        }
+        state.planXTendonSets = state.planXTendonSets.slice(0, count);
+    }
+
     if (DOM.ductDiameter) state.ductDiameter = toMm(parseFloat(DOM.ductDiameter.value)) || 25;
 
     // Clamp perpendicular tendon heights to slab thickness
@@ -979,6 +1096,25 @@ function syncInputsToState() {
 
     // Recalculate plan view X-tendon positions based on mode/width/spacing
     updatePlanXTendons();
+
+    // Corner elevations and tendon end angles
+    if (DOM.enableCornerElevations) state.enableCornerElevations = DOM.enableCornerElevations.checked;
+    if (state.enableCornerElevations) {
+        if (DOM.zCornerBL) state.zCornerBL = parseFloat(DOM.zCornerBL.value) || 0;
+        if (DOM.zCornerBR) state.zCornerBR = parseFloat(DOM.zCornerBR.value) || 0;
+        if (DOM.zCornerTR) state.zCornerTR = parseFloat(DOM.zCornerTR.value) || 0;
+        if (DOM.zCornerTL) state.zCornerTL = parseFloat(DOM.zCornerTL.value) || 0;
+    } else {
+        state.zCornerBL = 0;
+        state.zCornerBR = 0;
+        state.zCornerTR = 0;
+        state.zCornerTL = 0;
+    }
+    
+    if (DOM.leftEndAngle) state.leftEndAngle = parseFloat(DOM.leftEndAngle.value) || 0;
+    if (DOM.leftEndAngleLocked) state.leftEndAngleLocked = DOM.leftEndAngleLocked.checked;
+    if (DOM.rightEndAngle) state.rightEndAngle = parseFloat(DOM.rightEndAngle.value) || 0;
+    if (DOM.rightEndAngleLocked) state.rightEndAngleLocked = DOM.rightEndAngleLocked.checked;
 }
 
 // Clamp control points heights to be within allowable cover envelopes
@@ -1037,9 +1173,39 @@ function syncStateToInputs() {
     if (DOM.minSupportAngle && document.activeElement !== DOM.minSupportAngle) DOM.minSupportAngle.value = state.minSupportAngle;
     if (DOM.maxSupportAngle && document.activeElement !== DOM.maxSupportAngle) DOM.maxSupportAngle.value = state.maxSupportAngle;
     if (DOM.numTendonSets && document.activeElement !== DOM.numTendonSets) DOM.numTendonSets.value = state.elevationTendonSets.length;
+    if (DOM.numXTendonSets && document.activeElement !== DOM.numXTendonSets) DOM.numXTendonSets.value = state.planXTendonSets.length;
     if (DOM.ductDiameter && document.activeElement !== DOM.ductDiameter) {
         DOM.ductDiameter.value = fromMm(state.ductDiameter).toFixed(state.unit === 'cm' ? 1 : 0);
     }
+
+    // Corner elevations and tendon end angles
+    if (DOM.enableCornerElevations) {
+        DOM.enableCornerElevations.checked = state.enableCornerElevations;
+        const container = document.getElementById('corner-elevations-container');
+        if (container) container.style.display = state.enableCornerElevations ? 'flex' : 'none';
+    }
+    if (DOM.zCornerBL && document.activeElement !== DOM.zCornerBL) DOM.zCornerBL.value = state.zCornerBL;
+    if (DOM.zCornerBR && document.activeElement !== DOM.zCornerBR) DOM.zCornerBR.value = state.zCornerBR;
+    if (DOM.zCornerTR && document.activeElement !== DOM.zCornerTR) DOM.zCornerTR.value = state.zCornerTR;
+    if (DOM.zCornerTL && document.activeElement !== DOM.zCornerTL) DOM.zCornerTL.value = state.zCornerTL;
+    
+    if (state.leftEndAngleLocked) {
+        if (DOM.leftEndAngle && document.activeElement !== DOM.leftEndAngle) DOM.leftEndAngle.value = state.leftEndAngle;
+    } else {
+        const solvedLeft = getSupportAngles(0).right || 0;
+        state.leftEndAngle = parseFloat(solvedLeft.toFixed(1));
+        if (DOM.leftEndAngle && document.activeElement !== DOM.leftEndAngle) DOM.leftEndAngle.value = state.leftEndAngle;
+    }
+    if (DOM.leftEndAngleLocked) DOM.leftEndAngleLocked.checked = state.leftEndAngleLocked;
+    
+    if (state.rightEndAngleLocked) {
+        if (DOM.rightEndAngle && document.activeElement !== DOM.rightEndAngle) DOM.rightEndAngle.value = state.rightEndAngle;
+    } else {
+        const solvedRight = getSupportAngles(state.numSpans).left || 0;
+        state.rightEndAngle = parseFloat(solvedRight.toFixed(1));
+        if (DOM.rightEndAngle && document.activeElement !== DOM.rightEndAngle) DOM.rightEndAngle.value = state.rightEndAngle;
+    }
+    if (DOM.rightEndAngleLocked) DOM.rightEndAngleLocked.checked = state.rightEndAngleLocked;
 
     // Toggle span length containers depending on count
     DOM.span2Container.style.display = state.numSpans >= 2 ? 'block' : 'none';
@@ -1056,6 +1222,7 @@ function syncStateToInputs() {
             state.activeTab === 'split' ? 'split-active' :
             state.activeTab === 'plan' ? 'tab-plan' : 'tab-elevation'
         );
+        updateZoomOverlayVisibility();
     }
 
     // Toggle sidebar parameter panels based on active tab
@@ -1287,9 +1454,16 @@ function renderVisualizer() {
         `;
         renderPlanVisualizer(DOM.planSvg);
     } else {
+        // Compute legend set color from selectedRowIdx
+        const _legendSetColRowIdx = Math.floor(state.selectedRowIdx / 2);
+        const _legendIsAbove = (state.selectedRowIdx % 2 === 0);
+        const _legendSetIdx = state.planXTendonSets.findIndex(s =>
+            s.columnRowIdx === _legendSetColRowIdx && ((_legendIsAbove && s.direction === 'above') || (!_legendIsAbove && s.direction === 'below'))
+        );
+        const _legendSetColor = getSetColor(_legendSetIdx >= 0 ? _legendSetIdx : state.selectedRowIdx);
         DOM.visualizerLegend.innerHTML = `
             <span class="legend-item"><span class="legend-dot c-slab"></span>Slab</span>
-            <span class="legend-item"><span class="legend-dot c-tendon"></span>Tendon</span>
+            <span class="legend-item"><span class="legend-dot" style="background-color:${_legendSetColor}"></span>Active Tendon</span>
             <span class="legend-item"><span class="legend-dot c-limits"></span>Cover Limits</span>
             <span class="legend-item"><span class="legend-dot c-handles"></span>Drag Handles</span>
             <span class="legend-item"><span class="legend-dot" style="background-color: transparent; border: 1px dashed #64748b; border-radius: 0; width: 12px; height: 2px;"></span>Neutral Axis (N.A.)</span>
@@ -1574,12 +1748,21 @@ function renderVisualizer() {
     }
 
 
-    // Render other sections' tendon profiles in the background as faint dashed lines
+    // Helper: find the X-tendon set index for a given section index (above/below row)
+    const getSectionSetIdx = (sectionIdx) => {
+        const colRowIdx = Math.floor(sectionIdx / 2);
+        const isAbove = (sectionIdx % 2 === 0);
+        const found = state.planXTendonSets.findIndex(s =>
+            s.columnRowIdx === colRowIdx && (isAbove ? s.direction === 'above' : s.direction === 'below')
+        );
+        return found >= 0 ? found : sectionIdx;
+    };
+
+    // Render other sections' tendon profiles in the background as faint dashed lines (colored by their set)
     for (let s = 0; s < 2 * state.numColRows; s++) {
         if (s === state.selectedRowIdx) continue;
         
         const r = Math.floor(s / 2);
-        // Calculate cumulative length for row r
         let rowLength = 0;
         for (let i = 0; i < state.numSpans; i++) {
             const col = state.planColumns.find(c => c.id === `col-${i+1}-row${r}`);
@@ -1596,23 +1779,23 @@ function renderVisualizer() {
             const profile = getTendonProfileForRow(xGlobal, s);
             const sx = scaleX(xGlobal);
             const sy = mapYToSvg(profile.y);
-            
-            if (i === 0) {
-                otherPathD += `M ${sx} ${sy}`;
-            } else {
-                otherPathD += ` L ${sx} ${sy}`;
-            }
+            if (i === 0) otherPathD += `M ${sx} ${sy}`;
+            else otherPathD += ` L ${sx} ${sy}`;
         }
         
+        const ghostColor = getSetColor(getSectionSetIdx(s));
         const otherTendonPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         otherTendonPath.setAttribute('d', otherPathD);
         otherTendonPath.setAttribute('fill', 'none');
-        otherTendonPath.setAttribute('stroke', '#64748b'); // slate gray
+        otherTendonPath.setAttribute('stroke', ghostColor);
         otherTendonPath.setAttribute('stroke-width', '1.5');
-        otherTendonPath.setAttribute('stroke-dasharray', '3,3');
-        otherTendonPath.setAttribute('opacity', '0.35');
+        otherTendonPath.setAttribute('stroke-dasharray', '4,3');
+        otherTendonPath.setAttribute('opacity', '0.28');
         svg.appendChild(otherTendonPath);
     }
+
+    // Determine the color for the currently active section
+    const activeSetColor = getSetColor(getSectionSetIdx(state.selectedRowIdx));
 
     // 5. Render Tendon Path (Polyline/path from sampled points)
     // Check if any point violates concrete cover envelope
@@ -1645,11 +1828,12 @@ function renderVisualizer() {
         }
     });
     
-    // Draw duct outer diameter envelope dashed lines
+    // Draw duct outer diameter envelope dashed lines (colored by set)
+    const tendonColor = coverViolation ? '#ef4444' : activeSetColor;
     const ductTopPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     ductTopPath.setAttribute('d', pathDuctTop);
     ductTopPath.setAttribute('fill', 'none');
-    ductTopPath.setAttribute('stroke', coverViolation ? '#ef4444' : '#38bdf8');
+    ductTopPath.setAttribute('stroke', tendonColor);
     ductTopPath.setAttribute('stroke-width', '1');
     ductTopPath.setAttribute('stroke-dasharray', '2,2');
     ductTopPath.setAttribute('opacity', '0.45');
@@ -1658,7 +1842,7 @@ function renderVisualizer() {
     const ductBottomPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     ductBottomPath.setAttribute('d', pathDuctBottom);
     ductBottomPath.setAttribute('fill', 'none');
-    ductBottomPath.setAttribute('stroke', coverViolation ? '#ef4444' : '#38bdf8');
+    ductBottomPath.setAttribute('stroke', tendonColor);
     ductBottomPath.setAttribute('stroke-width', '1');
     ductBottomPath.setAttribute('stroke-dasharray', '2,2');
     ductBottomPath.setAttribute('opacity', '0.45');
@@ -1666,7 +1850,12 @@ function renderVisualizer() {
     
     const tendonPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     tendonPath.setAttribute('d', pathD);
-    tendonPath.setAttribute('class', coverViolation ? 'svg-tendon-line-warning' : 'svg-tendon-line');
+    tendonPath.setAttribute('fill', 'none');
+    tendonPath.setAttribute('stroke', tendonColor);
+    tendonPath.setAttribute('stroke-width', coverViolation ? '2.5' : '2.5');
+    tendonPath.setAttribute('stroke-linecap', 'round');
+    tendonPath.setAttribute('stroke-linejoin', 'round');
+    if (coverViolation) tendonPath.setAttribute('stroke-dasharray', '6,2');
     tendonPath.addEventListener('mousemove', (e) => showTendonTooltip(e));
     tendonPath.addEventListener('mouseout', hideTooltip);
     svg.appendChild(tendonPath);
@@ -1762,7 +1951,7 @@ function renderVisualizer() {
         const supportAngleText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         supportAngleText.setAttribute('x', sx - 8);
         supportAngleText.setAttribute('y', sy + 3);
-        supportAngleText.setAttribute('fill', '#10b981');
+        supportAngleText.setAttribute('fill', isSupportAngleViolating(i) ? '#ef4444' : '#10b981');
         supportAngleText.setAttribute('font-size', '9px');
         supportAngleText.setAttribute('font-family', 'JetBrains Mono, monospace');
         supportAngleText.setAttribute('text-anchor', 'end');
@@ -2507,7 +2696,7 @@ function updateChecksAndOutputs() {
         } else {
             clashCheck.className = 'check-item success';
             clashCheck.querySelector('.check-status-icon').innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
-            clashDesc.textContent = `No clashes detected between longitudinal and perpendicular tendons.`;
+            clashDesc.textContent = `No clashes detected between tendons.`;
         }
     }
 }
@@ -2555,6 +2744,7 @@ function renderSectionSelectTabs() {
 // Master execution block
 // Master execution block
 function calculateAndRender() {
+    updatePlanXTendons();
     if (state.controlPointsRows && state.controlPointsRows[state.selectedRowIdx]) {
         state.controlPoints = state.controlPointsRows[state.selectedRowIdx];
     }
@@ -2565,8 +2755,22 @@ function calculateAndRender() {
     updateSidebarNodeInputs();
     updateActiveColumnsData();
     updateChecksAndOutputs();
+    syncPlanYTendons();
     syncStateToInputs(); // Ensure sidebar inputs are synced with interactive changes
     renderSectionSelectTabs();
+}
+
+// Sync state.planYTendons with active perpendicular (transverse Y) tendons
+function syncPlanYTendons() {
+    const activePerp = getActivePerpendicularTendons();
+    state.planYTendons = Array.from({ length: state.numSpans }, () => []);
+    
+    let spanStartX = 0;
+    state.spanLengths.forEach((len, spanIdx) => {
+        const spanTends = activePerp.filter(pt => pt.x >= spanStartX && pt.x < spanStartX + len + 0.0001);
+        state.planYTendons[spanIdx] = spanTends.map(pt => pt.x - spanStartX);
+        spanStartX += len;
+    });
 }
 
 // Render numeric input fields for supports and low points dynamically
@@ -2610,7 +2814,7 @@ function renderNodeInputs() {
         const angleSpan = document.createElement('span');
         angleSpan.id = `support-angle-text-${i}`;
         angleSpan.style.fontSize = '0.6rem';
-        angleSpan.style.color = '#10b981';
+        angleSpan.style.color = isSupportAngleViolating(i) ? '#ef4444' : '#10b981';
         angleSpan.style.marginTop = '2px';
         const angles = getSupportAngles(i);
         angleSpan.textContent = formatSupportAngleText(angles);
@@ -3081,285 +3285,313 @@ function getActivePerpendicularTendons() {
     return list;
 }
 
-// Render dynamic input fields for perpendicular tendon sets in the sidebar
 function renderSidebarTendonSets() {
     const container = DOM.tendonSetsContainer;
     if (!container) return;
     container.innerHTML = '';
 
-    state.elevationTendonSets.forEach((set, idx) => {
-        const setDiv = document.createElement('div');
-        setDiv.className = 'tendon-set-card';
-        setDiv.style.border = '1px solid #334155';
-        setDiv.style.borderRadius = '6px';
-        setDiv.style.padding = '0.6rem';
-        setDiv.style.backgroundColor = '#0b1329';
-        setDiv.style.display = 'flex';
-        setDiv.style.flexDirection = 'column';
-        setDiv.style.gap = '0.5rem';
+    for (let s = 0; s <= state.numSpans; s++) {
+        const groupHeader = document.createElement('div');
+        groupHeader.className = 'support-division-header';
+        groupHeader.style.fontWeight = '600';
+        groupHeader.style.color = '#a7f3d0';
+        groupHeader.style.marginTop = '0.5rem';
+        groupHeader.style.marginBottom = '0.4rem';
+        groupHeader.style.borderBottom = '1px solid #334155';
+        groupHeader.style.paddingBottom = '0.2rem';
+        groupHeader.style.fontSize = '0.75rem';
+        groupHeader.textContent = `Support S${s}`;
+        container.appendChild(groupHeader);
 
-        const header = document.createElement('div');
-        header.style.display = 'flex';
-        header.style.justifyContent = 'space-between';
-        header.style.alignItems = 'center';
-        
-        const title = document.createElement('h3');
-        title.style.fontSize = '0.75rem';
-        title.style.margin = '0';
-        title.style.color = '#38bdf8';
-        title.textContent = `Set ${idx + 1}`;
-        header.appendChild(title);
+        const supportSets = state.elevationTendonSets
+            .map((set, idx) => ({ set, idx }))
+            .filter(item => item.set.supportIdx === s);
 
-        const btnGroup = document.createElement('div');
-        btnGroup.style.display = 'flex';
-        btnGroup.style.gap = '0.3rem';
-
-        const copyBtn = document.createElement('button');
-        copyBtn.className = 'btn btn-secondary';
-        copyBtn.style.padding = '2px 6px';
-        copyBtn.style.fontSize = '0.65rem';
-        copyBtn.style.lineHeight = '1';
-        copyBtn.textContent = 'Copy';
-        copyBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            state.clipboardTendonSet = { ...set };
-            renderSidebarTendonSets();
-        });
-        btnGroup.appendChild(copyBtn);
-
-        const pasteBtn = document.createElement('button');
-        pasteBtn.className = 'btn btn-secondary';
-        pasteBtn.style.padding = '2px 6px';
-        pasteBtn.style.fontSize = '0.65rem';
-        pasteBtn.style.lineHeight = '1';
-        pasteBtn.textContent = 'Paste';
-        if (!state.clipboardTendonSet) {
-            pasteBtn.disabled = true;
-            pasteBtn.style.opacity = '0.4';
-            pasteBtn.style.cursor = 'not-allowed';
+        if (supportSets.length === 0) {
+            const noSets = document.createElement('div');
+            noSets.style.fontSize = '0.65rem';
+            noSets.style.color = '#64748b';
+            noSets.style.fontStyle = 'italic';
+            noSets.style.marginLeft = '0.5rem';
+            noSets.style.marginBottom = '0.6rem';
+            noSets.textContent = 'No tendon sets defined';
+            container.appendChild(noSets);
+            continue;
         }
-        pasteBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            if (state.clipboardTendonSet) {
-                set.supportIdx = state.clipboardTendonSet.supportIdx;
-                set.direction = state.clipboardTendonSet.direction;
-                set.count = state.clipboardTendonSet.count;
-                set.spacing = state.clipboardTendonSet.spacing;
-                set.offset = state.clipboardTendonSet.offset;
-                set.height = Math.max(0, Math.min(state.slabThickness, state.clipboardTendonSet.height));
-                calculateAndRender();
+
+        supportSets.forEach(({ set, idx }) => {
+            const setDiv = document.createElement('div');
+            setDiv.className = 'tendon-set-card';
+            setDiv.style.border = '1px solid #334155';
+            setDiv.style.borderRadius = '6px';
+            setDiv.style.padding = '0.6rem';
+            setDiv.style.backgroundColor = '#0b1329';
+            setDiv.style.display = 'flex';
+            setDiv.style.flexDirection = 'column';
+            setDiv.style.gap = '0.5rem';
+            setDiv.style.marginBottom = '0.5rem';
+
+            const header = document.createElement('div');
+            header.style.display = 'flex';
+            header.style.justifyContent = 'space-between';
+            header.style.alignItems = 'center';
+            
+            const title = document.createElement('h3');
+            title.style.fontSize = '0.75rem';
+            title.style.margin = '0';
+            title.style.color = '#38bdf8';
+            title.textContent = `Set ${idx + 1}`;
+            header.appendChild(title);
+
+            const btnGroup = document.createElement('div');
+            btnGroup.style.display = 'flex';
+            btnGroup.style.gap = '0.3rem';
+
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'btn btn-secondary';
+            copyBtn.style.padding = '2px 6px';
+            copyBtn.style.fontSize = '0.65rem';
+            copyBtn.style.lineHeight = '1';
+            copyBtn.textContent = 'Copy';
+            copyBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                state.clipboardTendonSet = { ...set };
+                renderSidebarTendonSets();
+            });
+            btnGroup.appendChild(copyBtn);
+
+            const pasteBtn = document.createElement('button');
+            pasteBtn.className = 'btn btn-secondary';
+            pasteBtn.style.padding = '2px 6px';
+            pasteBtn.style.fontSize = '0.65rem';
+            pasteBtn.style.lineHeight = '1';
+            pasteBtn.textContent = 'Paste';
+            if (!state.clipboardTendonSet) {
+                pasteBtn.disabled = true;
+                pasteBtn.style.opacity = '0.4';
+                pasteBtn.style.cursor = 'not-allowed';
             }
-        });
-        btnGroup.appendChild(pasteBtn);
+            pasteBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (state.clipboardTendonSet) {
+                    set.supportIdx = state.clipboardTendonSet.supportIdx;
+                    set.direction = state.clipboardTendonSet.direction;
+                    set.count = state.clipboardTendonSet.count;
+                    set.spacing = state.clipboardTendonSet.spacing;
+                    set.offset = state.clipboardTendonSet.offset;
+                    set.height = Math.max(0, Math.min(state.slabThickness, state.clipboardTendonSet.height));
+                    calculateAndRender();
+                    renderSidebarTendonSets();
+                }
+            });
+            btnGroup.appendChild(pasteBtn);
 
-        header.appendChild(btnGroup);
-        
-        setDiv.appendChild(header);
+            header.appendChild(btnGroup);
+            
+            setDiv.appendChild(header);
 
-        // Row 1: Support & Direction
-        const row1 = document.createElement('div');
-        row1.style.display = 'grid';
-        row1.style.gridTemplateColumns = '1fr 1fr';
-        row1.style.gap = '0.4rem';
+            const row1 = document.createElement('div');
+            row1.style.display = 'grid';
+            row1.style.gridTemplateColumns = '1fr 1fr';
+            row1.style.gap = '0.4rem';
 
-        const supGroup = document.createElement('div');
-        supGroup.className = 'form-group';
-        supGroup.style.margin = '0';
-        const supLabel = document.createElement('label');
-        supLabel.style.fontSize = '0.6rem';
-        supLabel.textContent = 'Support';
-        const supSelect = document.createElement('select');
-        supSelect.className = 'form-control form-control-sm';
-        supSelect.id = `input-set-support-${idx}`;
-        for (let s = 0; s <= state.numSpans; s++) {
-            const opt = document.createElement('option');
-            opt.value = s;
-            opt.textContent = `S${s}`;
-            if (set.supportIdx === s) opt.selected = true;
-            supSelect.appendChild(opt);
-        }
-        supSelect.addEventListener('change', () => {
-            set.supportIdx = parseInt(supSelect.value);
-            calculateAndRender();
-        });
-        supGroup.appendChild(supLabel);
-        supGroup.appendChild(supSelect);
-        row1.appendChild(supGroup);
+            const supGroup = document.createElement('div');
+            supGroup.className = 'form-group';
+            supGroup.style.margin = '0';
+            const supLabel = document.createElement('label');
+            supLabel.style.fontSize = '0.6rem';
+            supLabel.textContent = 'Support';
+            const supSelect = document.createElement('select');
+            supSelect.className = 'form-control form-control-sm';
+            supSelect.id = `input-set-support-${idx}`;
+            for (let s = 0; s <= state.numSpans; s++) {
+                const opt = document.createElement('option');
+                opt.value = s;
+                opt.textContent = `S${s}`;
+                if (set.supportIdx === s) opt.selected = true;
+                supSelect.appendChild(opt);
+            }
+            supSelect.addEventListener('change', () => {
+                set.supportIdx = parseInt(supSelect.value);
+                calculateAndRender();
+                renderSidebarTendonSets();
+            });
+            supGroup.appendChild(supLabel);
+            supGroup.appendChild(supSelect);
+            row1.appendChild(supGroup);
 
-        const dirGroup = document.createElement('div');
-        dirGroup.className = 'form-group';
-        dirGroup.style.margin = '0';
-        const dirLabel = document.createElement('label');
-        dirLabel.style.fontSize = '0.6rem';
-        dirLabel.textContent = 'Direction';
-        const dirSelect = document.createElement('select');
-        dirSelect.className = 'form-control form-control-sm';
-        dirSelect.id = `input-set-dir-${idx}`;
-        const optLeft = document.createElement('option');
-        optLeft.value = 'left';
-        optLeft.textContent = 'Left';
-        if (set.direction === 'left') optLeft.selected = true;
-        const optRight = document.createElement('option');
-        optRight.value = 'right';
-        optRight.textContent = 'Right';
-        if (set.direction === 'right') optRight.selected = true;
-        dirSelect.appendChild(optLeft);
-        dirSelect.appendChild(optRight);
-        dirSelect.addEventListener('change', () => {
-            set.direction = dirSelect.value;
-            calculateAndRender();
-        });
-        dirGroup.appendChild(dirLabel);
-        dirGroup.appendChild(dirSelect);
-        row1.appendChild(dirGroup);
+            const dirGroup = document.createElement('div');
+            dirGroup.className = 'form-group';
+            dirGroup.style.margin = '0';
+            const dirLabel = document.createElement('label');
+            dirLabel.style.fontSize = '0.6rem';
+            dirLabel.textContent = 'Direction';
+            const dirSelect = document.createElement('select');
+            dirSelect.className = 'form-control form-control-sm';
+            dirSelect.id = `input-set-dir-${idx}`;
+            const optLeft = document.createElement('option');
+            optLeft.value = 'left';
+            optLeft.textContent = 'Left';
+            if (set.direction === 'left') optLeft.selected = true;
+            const optRight = document.createElement('option');
+            optRight.value = 'right';
+            optRight.textContent = 'Right';
+            if (set.direction === 'right') optRight.selected = true;
+            dirSelect.appendChild(optLeft);
+            dirSelect.appendChild(optRight);
+            dirSelect.addEventListener('change', () => {
+                set.direction = dirSelect.value;
+                calculateAndRender();
+            });
+            dirGroup.appendChild(dirLabel);
+            dirGroup.appendChild(dirSelect);
+            row1.appendChild(dirGroup);
 
-        setDiv.appendChild(row1);
+            setDiv.appendChild(row1);
 
-        // Row 2: Count & Spacing
-        const row2 = document.createElement('div');
-        row2.style.display = 'grid';
-        row2.style.gridTemplateColumns = '1fr 1fr';
-        row2.style.gap = '0.4rem';
+            const row2 = document.createElement('div');
+            row2.style.display = 'grid';
+            row2.style.gridTemplateColumns = '1fr 1fr';
+            row2.style.gap = '0.4rem';
 
-        const cntGroup = document.createElement('div');
-        cntGroup.className = 'form-group';
-        cntGroup.style.margin = '0';
-        const cntLabel = document.createElement('label');
-        cntLabel.style.fontSize = '0.6rem';
-        cntLabel.textContent = 'Count';
-        const cntInput = document.createElement('input');
-        cntInput.type = 'number';
-        cntInput.className = 'form-control form-control-sm';
-        cntInput.id = `input-set-count-${idx}`;
-        cntInput.value = set.count;
-        cntInput.min = 0;
-        cntInput.max = 50;
-        cntInput.addEventListener('input', () => {
-            set.count = Math.max(0, parseInt(cntInput.value) || 0);
-            calculateAndRender();
-        });
-        cntInput.addEventListener('change', () => {
-            set.count = Math.max(0, parseInt(cntInput.value) || 0);
+            const cntGroup = document.createElement('div');
+            cntGroup.className = 'form-group';
+            cntGroup.style.margin = '0';
+            const cntLabel = document.createElement('label');
+            cntLabel.style.fontSize = '0.6rem';
+            cntLabel.textContent = 'Count';
+            const cntInput = document.createElement('input');
+            cntInput.type = 'number';
+            cntInput.className = 'form-control form-control-sm';
+            cntInput.id = `input-set-count-${idx}`;
             cntInput.value = set.count;
-            calculateAndRender();
-        });
-        cntGroup.appendChild(cntLabel);
-        cntGroup.appendChild(cntInput);
-        row2.appendChild(cntGroup);
+            cntInput.min = 0;
+            cntInput.max = 50;
+            cntInput.addEventListener('input', () => {
+                set.count = Math.max(0, parseInt(cntInput.value) || 0);
+                calculateAndRender();
+            });
+            cntInput.addEventListener('change', () => {
+                set.count = Math.max(0, parseInt(cntInput.value) || 0);
+                cntInput.value = set.count;
+                calculateAndRender();
+            });
+            cntGroup.appendChild(cntLabel);
+            cntGroup.appendChild(cntInput);
+            row2.appendChild(cntGroup);
 
-        const spGroup = document.createElement('div');
-        spGroup.className = 'form-group';
-        spGroup.style.margin = '0';
-        const spLabel = document.createElement('label');
-        spLabel.style.fontSize = '0.6rem';
-        spLabel.textContent = `Spacing (${state.unit})`;
-        const spInput = document.createElement('input');
-        spInput.type = 'number';
-        spInput.className = 'form-control form-control-sm';
-        spInput.id = `input-set-spacing-${idx}`;
-        const spacingVal = state.unit === 'cm' ? set.spacing * 100 : set.spacing * 1000;
-        spInput.value = spacingVal.toFixed(state.unit === 'cm' ? 1 : 0);
-        spInput.min = 5;
-        spInput.step = state.unit === 'cm' ? 1 : 10;
-        spInput.addEventListener('input', () => {
-            let val = parseFloat(spInput.value);
-            if (!isNaN(val)) {
+            const spGroup = document.createElement('div');
+            spGroup.className = 'form-group';
+            spGroup.style.margin = '0';
+            const spLabel = document.createElement('label');
+            spLabel.style.fontSize = '0.6rem';
+            spLabel.textContent = `Spacing (${state.unit})`;
+            const spInput = document.createElement('input');
+            spInput.type = 'number';
+            spInput.className = 'form-control form-control-sm';
+            spInput.id = `input-set-spacing-${idx}`;
+            const spacingVal = state.unit === 'cm' ? set.spacing * 100 : set.spacing * 1000;
+            spInput.value = spacingVal.toFixed(state.unit === 'cm' ? 1 : 0);
+            spInput.min = 5;
+            spInput.step = state.unit === 'cm' ? 1 : 10;
+            spInput.addEventListener('input', () => {
+                let val = parseFloat(spInput.value);
+                if (!isNaN(val)) {
+                    set.spacing = state.unit === 'cm' ? val / 100 : val / 1000;
+                    calculateAndRender();
+                }
+            });
+            spInput.addEventListener('change', () => {
+                let val = parseFloat(spInput.value);
+                if (isNaN(val) || val <= 0) val = 20;
                 set.spacing = state.unit === 'cm' ? val / 100 : val / 1000;
+                spInput.value = val.toFixed(state.unit === 'cm' ? 1 : 0);
                 calculateAndRender();
-            }
-        });
-        spInput.addEventListener('change', () => {
-            let val = parseFloat(spInput.value);
-            if (isNaN(val) || val <= 0) val = 20;
-            set.spacing = state.unit === 'cm' ? val / 100 : val / 1000;
-            spInput.value = val.toFixed(state.unit === 'cm' ? 1 : 0);
-            calculateAndRender();
-        });
-        spGroup.appendChild(spLabel);
-        spGroup.appendChild(spInput);
-        row2.appendChild(spGroup);
+            });
+            spGroup.appendChild(spLabel);
+            spGroup.appendChild(spInput);
+            row2.appendChild(spGroup);
 
-        setDiv.appendChild(row2);
+            setDiv.appendChild(row2);
 
-        // Row 3: Offset & Height
-        const row3 = document.createElement('div');
-        row3.style.display = 'grid';
-        row3.style.gridTemplateColumns = '1fr 1fr';
-        row3.style.gap = '0.4rem';
+            const row3 = document.createElement('div');
+            row3.style.display = 'grid';
+            row3.style.gridTemplateColumns = '1fr 1fr';
+            row3.style.gap = '0.4rem';
 
-        const offGroup = document.createElement('div');
-        offGroup.className = 'form-group';
-        offGroup.style.margin = '0';
-        const offLabel = document.createElement('label');
-        offLabel.style.fontSize = '0.6rem';
-        offLabel.textContent = `Offset (${state.unit})`;
-        const offInput = document.createElement('input');
-        offInput.type = 'number';
-        offInput.className = 'form-control form-control-sm';
-        offInput.id = `input-set-offset-${idx}`;
-        const offsetVal = state.unit === 'cm' ? set.offset * 100 : set.offset * 1000;
-        offInput.value = offsetVal.toFixed(state.unit === 'cm' ? 1 : 0);
-        offInput.min = 0;
-        offInput.step = state.unit === 'cm' ? 1 : 10;
-        offInput.addEventListener('input', () => {
-            let val = parseFloat(offInput.value);
-            if (!isNaN(val)) {
+            const offGroup = document.createElement('div');
+            offGroup.className = 'form-group';
+            offGroup.style.margin = '0';
+            const offLabel = document.createElement('label');
+            offLabel.style.fontSize = '0.6rem';
+            offLabel.textContent = `Offset (${state.unit})`;
+            const offInput = document.createElement('input');
+            offInput.type = 'number';
+            offInput.className = 'form-control form-control-sm';
+            offInput.id = `input-set-offset-${idx}`;
+            const offsetVal = state.unit === 'cm' ? set.offset * 100 : set.offset * 1000;
+            offInput.value = offsetVal.toFixed(state.unit === 'cm' ? 1 : 0);
+            offInput.min = 0;
+            offInput.step = state.unit === 'cm' ? 1 : 10;
+            offInput.addEventListener('input', () => {
+                let val = parseFloat(offInput.value);
+                if (!isNaN(val)) {
+                    set.offset = state.unit === 'cm' ? val / 100 : val / 1000;
+                    calculateAndRender();
+                }
+            });
+            offInput.addEventListener('change', () => {
+                let val = parseFloat(offInput.value);
+                if (isNaN(val) || val < 0) val = 0;
                 set.offset = state.unit === 'cm' ? val / 100 : val / 1000;
+                offInput.value = val.toFixed(state.unit === 'cm' ? 1 : 0);
                 calculateAndRender();
-            }
-        });
-        offInput.addEventListener('change', () => {
-            let val = parseFloat(offInput.value);
-            if (isNaN(val) || val < 0) val = 0;
-            set.offset = state.unit === 'cm' ? val / 100 : val / 1000;
-            offInput.value = val.toFixed(state.unit === 'cm' ? 1 : 0);
-            calculateAndRender();
-        });
-        offGroup.appendChild(offLabel);
-        offGroup.appendChild(offInput);
-        row3.appendChild(offGroup);
+            });
+            offGroup.appendChild(offLabel);
+            offGroup.appendChild(offInput);
+            row3.appendChild(offGroup);
 
-        const hgGroup = document.createElement('div');
-        hgGroup.className = 'form-group';
-        hgGroup.style.margin = '0';
-        const hgLabel = document.createElement('label');
-        hgLabel.style.fontSize = '0.6rem';
-        hgLabel.textContent = `Height (${state.unit})`;
-        const hgInput = document.createElement('input');
-        hgInput.type = 'number';
-        hgInput.className = 'form-control form-control-sm';
-        hgInput.id = `input-set-height-${idx}`;
-        const hgVal = fromMm(set.height);
-        hgInput.value = hgVal.toFixed(state.unit === 'cm' ? 1 : 0);
-        hgInput.min = 0;
-        hgInput.max = fromMm(state.slabThickness);
-        hgInput.step = state.unit === 'cm' ? 0.5 : 5;
-        hgInput.addEventListener('input', () => {
-            let val = parseFloat(hgInput.value);
-            if (!isNaN(val)) {
-                // Do not clamp while typing to prevent divergence between UI and state
+            const hgGroup = document.createElement('div');
+            hgGroup.className = 'form-group';
+            hgGroup.style.margin = '0';
+            const hgLabel = document.createElement('label');
+            hgLabel.style.fontSize = '0.6rem';
+            hgLabel.textContent = `Height (${state.unit})`;
+            const hgInput = document.createElement('input');
+            hgInput.type = 'number';
+            hgInput.className = 'form-control form-control-sm';
+            hgInput.id = `input-set-height-${idx}`;
+            const hgVal = fromMm(set.height);
+            hgInput.value = hgVal.toFixed(state.unit === 'cm' ? 1 : 0);
+            hgInput.min = 0;
+            hgInput.max = fromMm(state.slabThickness);
+            hgInput.step = state.unit === 'cm' ? 0.5 : 5;
+            hgInput.addEventListener('input', () => {
+                let val = parseFloat(hgInput.value);
+                if (!isNaN(val)) {
+                    set.height = toMm(val);
+                    calculateAndRender();
+                }
+            });
+            hgInput.addEventListener('change', () => {
+                let val = parseFloat(hgInput.value);
+                if (isNaN(val)) val = fromMm(state.slabThickness - state.coverTop - 15);
+                const minH = 0;
+                const maxH = fromMm(state.slabThickness);
+                val = Math.max(minH, Math.min(maxH, val));
                 set.height = toMm(val);
+                hgInput.value = val.toFixed(state.unit === 'cm' ? 1 : 0);
                 calculateAndRender();
-            }
-        });
-        hgInput.addEventListener('change', () => {
-            let val = parseFloat(hgInput.value);
-            if (isNaN(val)) val = fromMm(state.slabThickness - state.coverTop - 15);
-            const minH = 0;
-            const maxH = fromMm(state.slabThickness);
-            val = Math.max(minH, Math.min(maxH, val));
-            set.height = toMm(val);
-            hgInput.value = val.toFixed(state.unit === 'cm' ? 1 : 0);
-            calculateAndRender();
-        });
-        hgGroup.appendChild(hgLabel);
-        hgGroup.appendChild(hgInput);
-        row3.appendChild(hgGroup);
+            });
+            hgGroup.appendChild(hgLabel);
+            hgGroup.appendChild(hgInput);
+            row3.appendChild(hgGroup);
 
-        setDiv.appendChild(row3);
+            setDiv.appendChild(row3);
 
-        container.appendChild(setDiv);
-    });
+            container.appendChild(setDiv);
+        });
+    }
 }
 
 // Sync values of perpendicular tendon sets UI inputs with current state variables
@@ -3432,6 +3664,348 @@ function updateSidebarTendonSets() {
             hgInput.max = fromMm(state.slabThickness);
             const label = hgInput.previousElementSibling;
             if (label) label.textContent = `Height (${state.unit})`;
+        }
+    });
+}
+
+// Render dynamic input fields for X-tendon sets in the sidebar plan view
+function renderSidebarXTendonSets() {
+    const container = DOM.xTendonSetsContainer;
+    if (!container) return;
+    container.innerHTML = '';
+
+    for (let r = 0; r < state.numColRows; r++) {
+        // Group division header
+        const groupHeader = document.createElement('div');
+        groupHeader.className = 'support-division-header';
+        groupHeader.style.fontWeight = '600';
+        groupHeader.style.color = '#f472b6';
+        groupHeader.style.marginTop = '0.5rem';
+        groupHeader.style.marginBottom = '0.4rem';
+        groupHeader.style.borderBottom = '1px solid #334155';
+        groupHeader.style.paddingBottom = '0.2rem';
+        groupHeader.style.fontSize = '0.75rem';
+        const info = getRowDisplayInfo(r);
+        groupHeader.textContent = `${info.label} (y = ${info.y.toFixed(2)}m)`;
+        container.appendChild(groupHeader);
+
+        const rowSets = state.planXTendonSets
+            .map((set, idx) => ({ set, idx }))
+            .filter(item => item.set.columnRowIdx === r);
+
+        if (rowSets.length === 0) {
+            const noSets = document.createElement('div');
+            noSets.style.fontSize = '0.65rem';
+            noSets.style.color = '#64748b';
+            noSets.style.fontStyle = 'italic';
+            noSets.style.marginLeft = '0.5rem';
+            noSets.style.marginBottom = '0.6rem';
+            noSets.textContent = 'No tendon sets defined';
+            container.appendChild(noSets);
+            continue;
+        }
+
+        rowSets.forEach(({ set, idx }) => {
+            const setDiv = document.createElement('div');
+            setDiv.className = 'tendon-set-card';
+            setDiv.style.border = '1px solid #334155';
+            setDiv.style.borderRadius = '6px';
+            setDiv.style.padding = '0.6rem';
+            setDiv.style.backgroundColor = '#0b1329';
+            setDiv.style.display = 'flex';
+            setDiv.style.flexDirection = 'column';
+            setDiv.style.gap = '0.5rem';
+            setDiv.style.marginBottom = '0.5rem';
+
+            const header = document.createElement('div');
+            header.style.display = 'flex';
+            header.style.justifyContent = 'space-between';
+            header.style.alignItems = 'center';
+            
+            const title = document.createElement('h3');
+            title.style.fontSize = '0.75rem';
+            title.style.margin = '0';
+            title.style.color = '#38bdf8';
+            title.textContent = `Set ${idx + 1}`;
+            header.appendChild(title);
+
+            const btnGroup = document.createElement('div');
+            btnGroup.style.display = 'flex';
+            btnGroup.style.gap = '0.3rem';
+
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'btn btn-secondary';
+            copyBtn.style.padding = '2px 6px';
+            copyBtn.style.fontSize = '0.65rem';
+            copyBtn.style.lineHeight = '1';
+            copyBtn.textContent = 'Copy';
+            copyBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                state.clipboardXTendonSet = { ...set };
+                renderSidebarXTendonSets();
+            });
+            btnGroup.appendChild(copyBtn);
+
+            const pasteBtn = document.createElement('button');
+            pasteBtn.className = 'btn btn-secondary';
+            pasteBtn.style.padding = '2px 6px';
+            pasteBtn.style.fontSize = '0.65rem';
+            pasteBtn.style.lineHeight = '1';
+            pasteBtn.textContent = 'Paste';
+            if (!state.clipboardXTendonSet) {
+                pasteBtn.disabled = true;
+                pasteBtn.style.opacity = '0.4';
+                pasteBtn.style.cursor = 'not-allowed';
+            }
+            pasteBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (state.clipboardXTendonSet) {
+                    set.columnRowIdx = state.clipboardXTendonSet.columnRowIdx;
+                    set.direction = state.clipboardXTendonSet.direction;
+                    set.count = state.clipboardXTendonSet.count;
+                    set.spacing = state.clipboardXTendonSet.spacing;
+                    set.offset = state.clipboardXTendonSet.offset;
+                    calculateAndRender();
+                    renderSidebarXTendonSets();
+                }
+            });
+            btnGroup.appendChild(pasteBtn);
+
+            header.appendChild(btnGroup);
+            setDiv.appendChild(header);
+
+            // Row 1: Column Row & Direction
+            const row1 = document.createElement('div');
+            row1.style.display = 'grid';
+            row1.style.gridTemplateColumns = '1fr 1fr';
+            row1.style.gap = '0.4rem';
+
+            const colGroup = document.createElement('div');
+            colGroup.className = 'form-group';
+            colGroup.style.margin = '0';
+            const colLabel = document.createElement('label');
+            colLabel.style.fontSize = '0.6rem';
+            colLabel.textContent = 'Column Row';
+            const colSelect = document.createElement('select');
+            colSelect.className = 'form-control form-control-sm';
+            colSelect.id = `input-xset-col-${idx}`;
+            for (let rIdx = 0; rIdx < state.numColRows; rIdx++) {
+                const opt = document.createElement('option');
+                opt.value = rIdx;
+                const info = getRowDisplayInfo(rIdx);
+                opt.textContent = `${info.label} (y=${info.y.toFixed(2)}m)`;
+                if (set.columnRowIdx === rIdx) opt.selected = true;
+                colSelect.appendChild(opt);
+            }
+            colSelect.addEventListener('change', () => {
+                set.columnRowIdx = parseInt(colSelect.value);
+                calculateAndRender();
+                renderSidebarXTendonSets();
+            });
+            colGroup.appendChild(colLabel);
+            colGroup.appendChild(colSelect);
+            row1.appendChild(colGroup);
+
+            const dirGroup = document.createElement('div');
+            dirGroup.className = 'form-group';
+            dirGroup.style.margin = '0';
+            const dirLabel = document.createElement('label');
+            dirLabel.style.fontSize = '0.6rem';
+            dirLabel.textContent = 'Direction';
+            const dirSelect = document.createElement('select');
+            dirSelect.className = 'form-control form-control-sm';
+            dirSelect.id = `input-xset-dir-${idx}`;
+            const optAbove = document.createElement('option');
+            optAbove.value = 'above';
+            optAbove.textContent = 'Above (+Y)';
+            if (set.direction === 'above') optAbove.selected = true;
+            const optBelow = document.createElement('option');
+            optBelow.value = 'below';
+            optBelow.textContent = 'Below (-Y)';
+            if (set.direction === 'below') optBelow.selected = true;
+            dirSelect.appendChild(optAbove);
+            dirSelect.appendChild(optBelow);
+            dirSelect.addEventListener('change', () => {
+                set.direction = dirSelect.value;
+                calculateAndRender();
+            });
+            dirGroup.appendChild(dirLabel);
+            dirGroup.appendChild(dirSelect);
+            row1.appendChild(dirGroup);
+
+            setDiv.appendChild(row1);
+
+            // Row 2: Count & Spacing
+            const row2 = document.createElement('div');
+            row2.style.display = 'grid';
+            row2.style.gridTemplateColumns = '1fr 1fr';
+            row2.style.gap = '0.4rem';
+
+            const cntGroup = document.createElement('div');
+            cntGroup.className = 'form-group';
+            cntGroup.style.margin = '0';
+            const cntLabel = document.createElement('label');
+            cntLabel.style.fontSize = '0.6rem';
+            cntLabel.textContent = 'Count';
+            const cntInput = document.createElement('input');
+            cntInput.type = 'number';
+            cntInput.className = 'form-control form-control-sm';
+            cntInput.id = `input-xset-count-${idx}`;
+            cntInput.value = set.count;
+            cntInput.min = 0;
+            cntInput.max = 50;
+            cntInput.addEventListener('input', () => {
+                set.count = Math.max(0, parseInt(cntInput.value) || 0);
+                calculateAndRender();
+            });
+            cntInput.addEventListener('change', () => {
+                set.count = Math.max(0, parseInt(cntInput.value) || 0);
+                cntInput.value = set.count;
+                calculateAndRender();
+            });
+            cntGroup.appendChild(cntLabel);
+            cntGroup.appendChild(cntInput);
+            row2.appendChild(cntGroup);
+
+            const spGroup = document.createElement('div');
+            spGroup.className = 'form-group';
+            spGroup.style.margin = '0';
+            const spLabel = document.createElement('label');
+            spLabel.style.fontSize = '0.6rem';
+            spLabel.textContent = `Spacing (${state.unit})`;
+            const spInput = document.createElement('input');
+            spInput.type = 'number';
+            spInput.className = 'form-control form-control-sm';
+            spInput.id = `input-xset-spacing-${idx}`;
+            const spacingVal = state.unit === 'cm' ? set.spacing * 100 : set.spacing * 1000;
+            spInput.value = spacingVal.toFixed(state.unit === 'cm' ? 1 : 0);
+            spInput.min = 5;
+            spInput.step = state.unit === 'cm' ? 1 : 10;
+            spInput.addEventListener('input', () => {
+                let val = parseFloat(spInput.value);
+                if (!isNaN(val)) {
+                    set.spacing = state.unit === 'cm' ? val / 100 : val / 1000;
+                    calculateAndRender();
+                }
+            });
+            spInput.addEventListener('change', () => {
+                let val = parseFloat(spInput.value);
+                if (isNaN(val) || val <= 0) val = 20;
+                set.spacing = state.unit === 'cm' ? val / 100 : val / 1000;
+                spInput.value = val.toFixed(state.unit === 'cm' ? 1 : 0);
+                calculateAndRender();
+            });
+            spGroup.appendChild(spLabel);
+            spGroup.appendChild(spInput);
+            row2.appendChild(spGroup);
+
+            setDiv.appendChild(row2);
+
+            // Row 3: Offset
+            const row3 = document.createElement('div');
+            row3.style.display = 'grid';
+            row3.style.gridTemplateColumns = '1fr 1fr';
+            row3.style.gap = '0.4rem';
+
+            const offGroup = document.createElement('div');
+            offGroup.className = 'form-group';
+            offGroup.style.margin = '0';
+            const offLabel = document.createElement('label');
+            offLabel.style.fontSize = '0.6rem';
+            offLabel.textContent = `Offset (${state.unit})`;
+            const offInput = document.createElement('input');
+            offInput.type = 'number';
+            offInput.className = 'form-control form-control-sm';
+            offInput.id = `input-xset-offset-${idx}`;
+            const offsetVal = state.unit === 'cm' ? set.offset * 100 : set.offset * 1000;
+            offInput.value = offsetVal.toFixed(state.unit === 'cm' ? 1 : 0);
+            offInput.min = 0;
+            offInput.step = state.unit === 'cm' ? 1 : 10;
+            offInput.addEventListener('input', () => {
+                let val = parseFloat(offInput.value);
+                if (!isNaN(val)) {
+                    set.offset = state.unit === 'cm' ? val / 100 : val / 1000;
+                    calculateAndRender();
+                }
+            });
+            offInput.addEventListener('change', () => {
+                let val = parseFloat(offInput.value);
+                if (isNaN(val) || val < 0) val = 0;
+                set.offset = state.unit === 'cm' ? val / 100 : val / 1000;
+                offInput.value = val.toFixed(state.unit === 'cm' ? 1 : 0);
+                calculateAndRender();
+            });
+            offGroup.appendChild(offLabel);
+            offGroup.appendChild(offInput);
+            row3.appendChild(offGroup);
+
+            setDiv.appendChild(row3);
+
+            container.appendChild(setDiv);
+        });
+    }
+}
+
+// Sync values of X-tendon sets UI inputs with current state variables
+function updateSidebarXTendonSets() {
+    const container = DOM.xTendonSetsContainer;
+    if (!container) return;
+
+    const numSets = state.planXTendonSets.length;
+    const cards = container.querySelectorAll('.tendon-set-card');
+    
+    if (cards.length !== numSets) {
+        renderSidebarXTendonSets();
+        return;
+    }
+
+    state.planXTendonSets.forEach((set, idx) => {
+        // Sync columnRow dropdown option list if row count changed
+        const colSelect = document.getElementById(`input-xset-col-${idx}`);
+        if (colSelect && document.activeElement !== colSelect) {
+            colSelect.innerHTML = '';
+            for (let rIdx = 0; rIdx < state.numColRows; rIdx++) {
+                const opt = document.createElement('option');
+                opt.value = rIdx;
+                const info = getRowInfo(rIdx, state.numColRows, state.slabWidth);
+                opt.textContent = `${info.name} (y=${info.y.toFixed(2)}m)`;
+                if (set.columnRowIdx === rIdx) opt.selected = true;
+                colSelect.appendChild(opt);
+            }
+            if (set.columnRowIdx >= state.numColRows) {
+                set.columnRowIdx = state.numColRows - 1;
+            }
+            colSelect.value = set.columnRowIdx;
+        }
+
+        // Sync direction
+        const dirSelect = document.getElementById(`input-xset-dir-${idx}`);
+        if (dirSelect && document.activeElement !== dirSelect) {
+            dirSelect.value = set.direction;
+        }
+
+        // Sync count
+        const cntInput = document.getElementById(`input-xset-count-${idx}`);
+        if (cntInput && document.activeElement !== cntInput) {
+            cntInput.value = set.count;
+        }
+
+        // Sync spacing
+        const spInput = document.getElementById(`input-xset-spacing-${idx}`);
+        if (spInput && document.activeElement !== spInput) {
+            const spacingVal = state.unit === 'cm' ? set.spacing * 100 : set.spacing * 1000;
+            spInput.value = spacingVal.toFixed(state.unit === 'cm' ? 1 : 0);
+            const label = spInput.previousElementSibling;
+            if (label) label.textContent = `Spacing (${state.unit})`;
+        }
+
+        // Sync offset
+        const offInput = document.getElementById(`input-xset-offset-${idx}`);
+        if (offInput && document.activeElement !== offInput) {
+            const offsetVal = state.unit === 'cm' ? set.offset * 100 : set.offset * 1000;
+            offInput.value = offsetVal.toFixed(state.unit === 'cm' ? 1 : 0);
+            const label = offInput.previousElementSibling;
+            if (label) label.textContent = `Offset (${state.unit})`;
         }
     });
 }
@@ -3592,13 +4166,34 @@ function updatePlanXTendons() {
             list.push(parseFloat(y.toFixed(2)));
         }
         state.planXTendons = list;
-    } else {
+    } else if (state.planXTendonsMode === 'positions') {
         if (xInput) {
             const vals = xInput.value.split(',')
                 .map(v => parseFloat(v.trim()))
                 .filter(v => !isNaN(v) && v >= 0 && v <= state.slabWidth);
             state.planXTendons = vals.sort((a, b) => a - b);
         }
+    } else if (state.planXTendonsMode === 'sets') {
+        const list = [];
+        state.planXTendonSets.forEach(set => {
+            const rowIdx = Math.min(set.columnRowIdx, state.numColRows - 1);
+            const w = state.slabWidth;
+            const info = getRowInfo(rowIdx, state.numColRows, w);
+            const colY = info.y;
+            
+            for (let j = 0; j < set.count; j++) {
+                let y = colY;
+                if (set.direction === 'above') {
+                    y = colY + set.offset + j * set.spacing;
+                } else {
+                    y = colY - set.offset - j * set.spacing;
+                }
+                if (y >= 0 && y <= w + 0.0001) {
+                    list.push(parseFloat(y.toFixed(3)));
+                }
+            }
+        });
+        state.planXTendons = Array.from(new Set(list)).sort((a, b) => a - b);
     }
 }
 
@@ -3609,6 +4204,7 @@ function updateSidebarPlanInputs() {
     const xInput = document.getElementById('input-plan-x-tendons');
     const spacingGroup = document.getElementById('group-plan-x-spacing');
     const positionsGroup = document.getElementById('group-plan-x-positions');
+    const setsGroup = document.getElementById('group-plan-x-sets');
 
     if (modeSelect) modeSelect.value = state.planXTendonsMode;
     if (spacingInput && document.activeElement !== spacingInput) {
@@ -3618,9 +4214,16 @@ function updateSidebarPlanInputs() {
     if (state.planXTendonsMode === 'spacing') {
         if (spacingGroup) spacingGroup.style.display = 'block';
         if (positionsGroup) positionsGroup.style.display = 'none';
-    } else {
+        if (setsGroup) setsGroup.style.display = 'none';
+    } else if (state.planXTendonsMode === 'positions') {
         if (spacingGroup) spacingGroup.style.display = 'none';
         if (positionsGroup) positionsGroup.style.display = 'block';
+        if (setsGroup) setsGroup.style.display = 'none';
+    } else if (state.planXTendonsMode === 'sets') {
+        if (spacingGroup) spacingGroup.style.display = 'none';
+        if (positionsGroup) positionsGroup.style.display = 'none';
+        if (setsGroup) setsGroup.style.display = 'flex';
+        updateSidebarXTendonSets();
     }
 
     if (xInput && document.activeElement !== xInput) {
@@ -3669,7 +4272,10 @@ function setupEventListeners() {
         DOM.coverTop, DOM.coverBottom, DOM.inflectionRatio,
         DOM.tendonForce, DOM.tendonForceY, DOM.jackingEnd, DOM.frictionMu, DOM.frictionK,
         DOM.anchorSet, DOM.tendonSpacingX, DOM.tendonSpacingY, DOM.verticalExaggeration,
-        DOM.minSupportAngle, DOM.maxSupportAngle, DOM.numTendonSets, DOM.ductDiameter
+        DOM.minSupportAngle, DOM.maxSupportAngle, DOM.numTendonSets, DOM.ductDiameter,
+        DOM.zCornerBL, DOM.zCornerBR, DOM.zCornerTR, DOM.zCornerTL,
+        DOM.leftEndAngle, DOM.leftEndAngleLocked, DOM.rightEndAngle, DOM.rightEndAngleLocked,
+        DOM.numXTendonSets
     ].filter(Boolean);
     
     inputs.forEach(input => {
@@ -3691,6 +4297,18 @@ function setupEventListeners() {
         resetDesign();
         calculateAndRender();
     });
+
+    // Toggle corner elevations display
+    if (DOM.enableCornerElevations) {
+        DOM.enableCornerElevations.addEventListener('change', () => {
+            const container = document.getElementById('corner-elevations-container');
+            if (container) {
+                container.style.display = DOM.enableCornerElevations.checked ? 'flex' : 'none';
+            }
+            syncInputsToState();
+            calculateAndRender();
+        });
+    }
 
     // Export CSV (header toolbar + in-card table button)
     DOM.btnExportCsv.addEventListener('click', exportCSV);
@@ -3964,6 +4582,11 @@ function setupEventListeners() {
             DOM.autocadModal.classList.remove('hidden');
             updateCopyButtonVisibility();
         });
+
+        if (DOM.btnExport3dCad) {
+            DOM.btnExport3dCad.addEventListener('click', export3DDXF);
+        }
+
 
         DOM.btnCloseModal.addEventListener('click', () => {
             DOM.autocadModal.classList.add('hidden');
@@ -4517,7 +5140,359 @@ function copyLispDataToClipboard() {
     });
 }
 
+// Export 3D CAD DXF Model
+function export3DDXF() {
+    const defaultName = 'pt_slab_3d_design';
+    const enteredName = prompt('Enter a name for this 3D model DXF:', defaultName);
+    if (enteredName === null) {
+        return; // User cancelled
+    }
+    const filename = (enteredName.trim() || defaultName) + '_3d_model.dxf';
+
+    const totalLength = state.spanLengths.reduce((a, b) => a + b, 0);
+    const slabWidthMm = state.slabWidth * 1000;
+    const thickness = state.slabThickness;
+    const totalLengthMm = totalLength * 1000;
+    const ductRadius = (state.ductDiameter || 25) / 2;
+
+    const f = (code, val) => `${code}\n${val}\n`;
+
+    // Helper to interpolate bottom slab Z level at any (x, y) coordinate (in meters)
+    const getCornerInterpolatedZ = (x, y) => {
+        if (!state.enableCornerElevations) return 0;
+        if (totalLength === 0 || state.slabWidth === 0) return 0;
+        
+        const xNorm = Math.max(0, Math.min(1, x / totalLength));
+        const yNorm = Math.max(0, Math.min(1, y / state.slabWidth));
+        
+        // Corner values in meters (inputs are in mm)
+        const zBL = (state.zCornerBL || 0) / 1000;
+        const zBR = (state.zCornerBR || 0) / 1000;
+        const zTR = (state.zCornerTR || 0) / 1000;
+        const zTL = (state.zCornerTL || 0) / 1000;
+        
+        return (1 - xNorm) * (1 - yNorm) * zBL +
+               xNorm * (1 - yNorm) * zBR +
+               xNorm * yNorm * zTR +
+               (1 - xNorm) * yNorm * zTL;
+    };
+
+    let dxf = '';
+
+    // HEADER SECTION specifying DXF R12 and drawing units (mm)
+    dxf += f(0, 'SECTION') + f(2, 'HEADER') + f(9, '$ACADVER') + f(1, 'AC1009') +
+           f(9, '$INSUNITS') + f(70, 4) + f(0, 'ENDSEC');
+
+    // Map set index → AutoCAD Color Index (ACI) — matches getSetColor palette
+    const setIdxToAci = (idx) => {
+        // ACI colors aligned with getSetColor hex palette
+        const aciMap = [130, 200, 90, 150, 220, 30, 180, 50, 40, 210];
+        return aciMap[idx % aciMap.length];
+    };
+
+    // Build per-set layer names for X-tendon sets
+    const xSetLayers = state.planXTendonSets.map((set, i) => ({
+        name: `TF_3D_XTENDON_SET${i + 1}`,
+        color: setIdxToAci(i),
+        setIdx: i
+    }));
+
+    // Build per-set layer names for Y (perpendicular) tendon sets
+    const ySetLayers = state.elevationTendonSets.map((set, i) => ({
+        name: `TF_3D_YTENDON_SET${i + 1}`,
+        color: setIdxToAci(i + xSetLayers.length),
+        setIdx: i
+    }));
+
+    // Define all layers
+    const layers = [
+        { name: '0', color: 7 },
+        { name: 'TF_3D_SLAB', color: 8 },
+        ...xSetLayers,
+        ...ySetLayers
+    ];
+
+    // TABLES SECTION
+    dxf += f(0, 'SECTION') + f(2, 'TABLES');
+    
+    // LTYPE TABLE
+    dxf += f(0, 'TABLE') + f(2, 'LTYPE') + f(70, 1);
+    dxf += f(0, 'LTYPE') + f(2, 'CONTINUOUS') + f(70, 0) + f(3, 'Solid line') + f(72, 65) + f(73, 0) + f(40, 0.0);
+    dxf += f(0, 'ENDTAB');
+
+    // LAYER TABLE
+    dxf += f(0, 'TABLE') + f(2, 'LAYER') + f(70, layers.length);
+    layers.forEach(layer => {
+        dxf += f(0, 'LAYER') + f(2, layer.name) + f(70, 0) + f(62, layer.color) + f(6, 'CONTINUOUS');
+    });
+    dxf += f(0, 'ENDTAB');
+    dxf += f(0, 'ENDSEC');
+
+    // ENTITIES SECTION
+    dxf += f(0, 'SECTION') + f(2, 'ENTITIES');
+
+    // Helper to find nearest column row index for a given Y coordinate (in meters)
+    const getNearestColRowIdx = (y) => {
+        let nearestRowIdx = 0;
+        let minDiff = Infinity;
+        for (let r = 0; r < state.numColRows; r++) {
+            const col = state.planColumns.find(c => c.id === `col-0-row${r}`);
+            if (col) {
+                const diff = Math.abs(y - col.y);
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    nearestRowIdx = r;
+                }
+            }
+        }
+        return nearestRowIdx;
+    };
+
+    // Helper for 3D Face
+    const dxf3DFace = (ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz, layer) => {
+        return f(0, '3DFACE') + f(8, layer) +
+               f(10, ax.toFixed(3)) + f(20, ay.toFixed(3)) + f(30, az.toFixed(3)) +
+               f(11, bx.toFixed(3)) + f(21, by.toFixed(3)) + f(31, bz.toFixed(3)) +
+               f(12, cx.toFixed(3)) + f(22, cy.toFixed(3)) + f(32, cz.toFixed(3)) +
+               f(13, dx.toFixed(3)) + f(23, dy.toFixed(3)) + f(33, dz.toFixed(3));
+    };
+
+    // Helper for 3D Solid Box (6 faces)
+    const dxf3DBox = (x1, y1, z1, x2, y2, z2, layer) => {
+        let s = '';
+        // Bottom
+        s += dxf3DFace(x1, y1, z1, x2, y1, z1, x2, y2, z1, x1, y2, z1, layer);
+        // Top
+        s += dxf3DFace(x1, y1, z2, x1, y2, z2, x2, y2, z2, x2, y1, z2, layer);
+        // Front (y = y1)
+        s += dxf3DFace(x1, y1, z1, x2, y1, z1, x2, y1, z2, x1, y1, z2, layer);
+        // Back (y = y2)
+        s += dxf3DFace(x1, y2, z1, x1, y2, z2, x2, y2, z2, x2, y2, z1, layer);
+        // Left (x = x1)
+        s += dxf3DFace(x1, y1, z1, x1, y1, z2, x1, y2, z2, x1, y2, z1, layer);
+        // Right (x = x2)
+        s += dxf3DFace(x2, y1, z1, x2, y2, z1, x2, y2, z2, x2, y1, z2, layer);
+        return s;
+    };
+
+    // Helper for 3D Cylinder Mesh (8-sided tube segment)
+    const dxf3DCylinder = (p1, p2, radius, layer) => {
+        const vx = p2.x - p1.x;
+        const vy = p2.y - p1.y;
+        const vz = p2.z - p1.z;
+        const len = Math.sqrt(vx * vx + vy * vy + vz * vz);
+        if (len < 0.001) return '';
+
+        const nx = vx / len;
+        const ny = vy / len;
+        const nz = vz / len;
+
+        // Arbitrary vector T not parallel to N
+        let tx = 0, ty = 1, tz = 0;
+        if (Math.abs(nx) < 0.1 && Math.abs(nz) < 0.1) {
+            tx = 1; ty = 0; tz = 0;
+        }
+
+        // U = T x N
+        let ux = ty * nz - tz * ny;
+        let uy = tz * nx - tx * nz;
+        let uz = tx * ny - ty * nx;
+        const uLen = Math.sqrt(ux * ux + uy * uy + uz * uz);
+        ux /= uLen; uy /= uLen; uz /= uLen;
+
+        // W = N x U
+        const wx = ny * uz - nz * uy;
+        const wy = nz * ux - nx * uz;
+        const wz = nx * uy - ny * ux;
+
+        const N = 8;
+        const pts1 = [];
+        const pts2 = [];
+
+        for (let i = 0; i < N; i++) {
+            const theta = (i / N) * 2 * Math.PI;
+            const cos = Math.cos(theta);
+            const sin = Math.sin(theta);
+
+            pts1.push({
+                x: p1.x + radius * (cos * ux + sin * wx),
+                y: p1.y + radius * (cos * uy + sin * wy),
+                z: p1.z + radius * (cos * uz + sin * wz)
+            });
+
+            pts2.push({
+                x: p2.x + radius * (cos * ux + sin * wx),
+                y: p2.y + radius * (cos * uy + sin * wy),
+                z: p2.z + radius * (cos * uz + sin * wz)
+            });
+        }
+
+        let s = '';
+        for (let i = 0; i < N; i++) {
+            const next = (i + 1) % N;
+            s += dxf3DFace(
+                pts1[i].x, pts1[i].y, pts1[i].z,
+                pts1[next].x, pts1[next].y, pts1[next].z,
+                pts2[next].x, pts2[next].y, pts2[next].z,
+                pts2[i].x, pts2[i].y, pts2[i].z,
+                layer
+            );
+        }
+        return s;
+    };
+
+    // 1. Slab Outline (divided grid to represent bilinear Z warping if enabled)
+    const layerSlab = 'TF_3D_SLAB';
+    if (!state.enableCornerElevations) {
+        dxf += dxf3DBox(0, 0, 0, totalLengthMm, slabWidthMm, thickness, layerSlab);
+    } else {
+        const nx = 40;
+        const ny = 12;
+        const dx = totalLength / nx;
+        const dy = state.slabWidth / ny;
+        
+        for (let i = 0; i < nx; i++) {
+            const xA = i * dx;
+            const xB = (i + 1) * dx;
+            const xAMm = xA * 1000;
+            const xBMm = xB * 1000;
+            
+            for (let j = 0; j < ny; j++) {
+                const yA = j * dy;
+                const yB = (j + 1) * dy;
+                const yAMm = yA * 1000;
+                const yBMm = yB * 1000;
+                
+                const zBL = getCornerInterpolatedZ(xA, yA) * 1000;
+                const zBR = getCornerInterpolatedZ(xB, yA) * 1000;
+                const zTR = getCornerInterpolatedZ(xB, yB) * 1000;
+                const zTL = getCornerInterpolatedZ(xA, yB) * 1000;
+                
+                const zBL_top = zBL + thickness;
+                const zBR_top = zBR + thickness;
+                const zTR_top = zTR + thickness;
+                const zTL_top = zTL + thickness;
+                
+                // Bottom face
+                dxf += dxf3DFace(xAMm, yAMm, zBL, xBMm, yAMm, zBR, xBMm, yBMm, zTR, xAMm, yBMm, zTL, layerSlab);
+                // Top face
+                dxf += dxf3DFace(xAMm, yAMm, zBL_top, xAMm, yBMm, zTL_top, xBMm, yBMm, zTR_top, xBMm, yAMm, zBR_top, layerSlab);
+                // Front face (y = yA)
+                dxf += dxf3DFace(xAMm, yAMm, zBL, xBMm, yAMm, zBR, xBMm, yAMm, zBR_top, xAMm, yAMm, zBL_top, layerSlab);
+                // Back face (y = yB)
+                dxf += dxf3DFace(xAMm, yBMm, zTL, xAMm, yBMm, zTL_top, xBMm, yBMm, zTR_top, xBMm, yBMm, zTR, layerSlab);
+                // Left face (x = xA)
+                dxf += dxf3DFace(xAMm, yAMm, zBL, xAMm, yAMm, zBL_top, xAMm, yBMm, zTL_top, xAMm, yBMm, zTL, layerSlab);
+                // Right face (x = xB)
+                dxf += dxf3DFace(xBMm, yAMm, zBR, xBMm, yBMm, zTR, xBMm, yBMm, zTR_top, xBMm, yAMm, zBR_top, layerSlab);
+            }
+        }
+    }
+
+    // 2. Longitudinal (X) Tendons — one layer per set, colored by set index
+    if (state.planXTendonsMode === 'sets') {
+        // Iterate set-by-set so each group lands on its own colored layer
+        state.planXTendonSets.forEach((set, setIdx) => {
+            const layerName = xSetLayers[setIdx] ? xSetLayers[setIdx].name : 'TF_3D_XTENDON_SET1';
+            const rowIdx = Math.min(set.columnRowIdx, state.numColRows - 1);
+            const info = getRowInfo(rowIdx, state.numColRows, state.slabWidth);
+            const colY = info.y;
+            const center = set.direction === 'above' ? colY + set.offset : colY - set.offset;
+            const startY = center - ((set.count - 1) * set.spacing) / 2;
+            const sectionIdx = set.direction === 'above' ? rowIdx * 2 : rowIdx * 2 + 1;
+
+            for (let ti = 0; ti < set.count; ti++) {
+                const y = startY + ti * set.spacing;
+                if (y < 0 || y > state.slabWidth) continue;
+                const yMm = y * 1000;
+                const points = [];
+                const segmentsPerSpan = 40;
+
+                let currentX = 0;
+                state.spanLengths.forEach((len, spanIdx) => {
+                    const step = len / segmentsPerSpan;
+                    for (let j = 0; j <= segmentsPerSpan; j++) {
+                        if (spanIdx > 0 && j === 0) continue;
+                        const localX = j * step;
+                        const xGlobal = currentX + localX;
+                        const profile = getTendonProfileForRow(xGlobal, sectionIdx);
+                        const zSlabBottom = getCornerInterpolatedZ(xGlobal, y) * 1000;
+                        points.push({ x: xGlobal * 1000, y: yMm, z: zSlabBottom + profile.y });
+                    }
+                    currentX += len;
+                });
+
+                for (let k = 0; k < points.length - 1; k++) {
+                    dxf += dxf3DCylinder(points[k], points[k + 1], ductRadius, layerName);
+                }
+            }
+        });
+    } else {
+        // Spacing / positions mode — flat list, color by nearest section
+        state.planXTendons.forEach(y => {
+            if (y < 0 || y > state.slabWidth) return;
+            const yMm = y * 1000;
+            const points = [];
+            const segmentsPerSpan = 40;
+            const colRowIdx = getNearestColRowIdx(y);
+            const info = getRowInfo(colRowIdx, state.numColRows, state.slabWidth);
+            const sectionIdx = y >= info.y ? colRowIdx * 2 : colRowIdx * 2 + 1;
+            // Pick the layer for this row
+            const layerName = xSetLayers[sectionIdx] ? xSetLayers[sectionIdx].name :
+                              (xSetLayers[0] ? xSetLayers[0].name : 'TF_3D_XTENDON_SET1');
+
+            let currentX = 0;
+            state.spanLengths.forEach((len, spanIdx) => {
+                const step = len / segmentsPerSpan;
+                for (let j = 0; j <= segmentsPerSpan; j++) {
+                    if (spanIdx > 0 && j === 0) continue;
+                    const localX = j * step;
+                    const xGlobal = currentX + localX;
+                    const profile = getTendonProfileForRow(xGlobal, sectionIdx);
+                    const zSlabBottom = getCornerInterpolatedZ(xGlobal, y) * 1000;
+                    points.push({ x: xGlobal * 1000, y: yMm, z: zSlabBottom + profile.y });
+                }
+                currentX += len;
+            });
+
+            for (let k = 0; k < points.length - 1; k++) {
+                dxf += dxf3DCylinder(points[k], points[k + 1], ductRadius, layerName);
+            }
+        });
+    }
+
+    // 3. Transverse (Y) Tendons — one layer per elevation tendon set
+    const activePerpTendons = getActivePerpendicularTendons();
+    activePerpTendons.forEach(pt => {
+        const absX = pt.x * 1000;
+        const zBottomStart = getCornerInterpolatedZ(pt.x, 0) * 1000;
+        const zBottomEnd = getCornerInterpolatedZ(pt.x, state.slabWidth) * 1000;
+        const p1 = { x: absX, y: 0, z: zBottomStart + pt.y };
+        const p2 = { x: absX, y: slabWidthMm, z: zBottomEnd + pt.y };
+        // Use the set's layer if available, fallback to first Y set layer
+        const yLayer = ySetLayers[pt.setIdx] ? ySetLayers[pt.setIdx].name :
+                       (ySetLayers[0] ? ySetLayers[0].name : 'TF_3D_YTENDON_SET1');
+        dxf += dxf3DCylinder(p1, p2, ductRadius, yLayer);
+    });
+
+    dxf += f(0, 'ENDSEC') + f(0, 'EOF');
+    dxf = dxf.replace(/\r?\n/g, '\r\n');
+
+    // Trigger download
+    const blob = new Blob([dxf], { type: 'application/dxf;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+
 // AutoCAD DXF File Export
+
 function exportDXF() {
     const viewType = document.getElementById('cad-export-type').value;
     const cadUnit = document.getElementById('cad-unit').value;
@@ -5334,6 +6309,8 @@ function exportJSON() {
             minSupportAngle: state.minSupportAngle,
             maxSupportAngle: state.maxSupportAngle,
             elevationTendonSets: state.elevationTendonSets,
+            planXTendonsMode: state.planXTendonsMode,
+            planXTendonSets: state.planXTendonSets,
             ductDiameter: state.ductDiameter
         }
     };
@@ -5446,6 +6423,19 @@ function importJSON(e) {
                 }));
             }
 
+            if (s.planXTendonsMode !== undefined) {
+                state.planXTendonsMode = s.planXTendonsMode;
+            }
+            if (Array.isArray(s.planXTendonSets)) {
+                state.planXTendonSets = s.planXTendonSets.map(set => ({
+                    columnRowIdx: set.columnRowIdx,
+                    direction: set.direction,
+                    count: set.count,
+                    spacing: set.spacing,
+                    offset: set.offset
+                }));
+            }
+
             // Sync layout, input bounds, values, and recalculate
             updateInputUnitBounds();
             syncStateToInputs();
@@ -5500,21 +6490,69 @@ function renderPlanVisualizer(svg) {
     rect.setAttribute('class', 'svg-slab-edge');
     svg.appendChild(rect);
     
-    // 2. Render X Tendons (Horizontal Lines - Red)
+    // 2. Render X Tendons (Horizontal Lines - Colored by Set if in sets mode, else Red)
     const xTendonsG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    state.planXTendons.forEach(y => {
-        if (y >= 0 && y <= totalWidth) {
-            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-            line.setAttribute('x1', mapX(0));
-            line.setAttribute('y1', mapY(y));
-            line.setAttribute('x2', mapX(totalLength));
-            line.setAttribute('y2', mapY(y));
-            line.setAttribute('stroke', '#ef4444');
-            line.setAttribute('stroke-width', '3');
-            line.setAttribute('opacity', '0.85');
-            xTendonsG.appendChild(line);
-        }
-    });
+    if (state.planXTendonsMode === 'sets') {
+        state.planXTendonSets.forEach((set, setIdx) => {
+            const rowIdx = Math.min(set.columnRowIdx, state.numColRows - 1);
+            const info = getRowInfo(rowIdx, state.numColRows, totalWidth);
+            const colY = info.y;
+            const center = set.direction === 'above' ? colY + set.offset : colY - set.offset;
+            const startY = center - ((set.count - 1) * set.spacing) / 2;
+            
+            for (let i = 0; i < set.count; i++) {
+                const y = startY + i * set.spacing;
+                if (y >= 0 && y <= totalWidth) {
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.setAttribute('x1', mapX(0));
+                    line.setAttribute('y1', mapY(y));
+                    line.setAttribute('x2', mapX(totalLength));
+                    line.setAttribute('y2', mapY(y));
+                    line.setAttribute('stroke', getSetColor(setIdx));
+                    line.setAttribute('stroke-width', '3');
+                    line.setAttribute('opacity', '0.85');
+                    
+                    // Clicking on X-tendon switches to the corresponding elevation profile section tab!
+                    line.setAttribute('class', 'plan-x-tendon-line');
+                    line.style.cursor = 'pointer';
+                    line.addEventListener('click', () => {
+                        const targetRowIdx = set.direction === 'above' ? 2 * set.columnRowIdx : 2 * set.columnRowIdx + 1;
+                        state.selectedRowIdx = targetRowIdx;
+                        
+                        // Switch active view tab to Split View or Elevation Profile so they can edit it immediately!
+                        if (state.activeTab === 'plan') {
+                            state.activeTab = 'split';
+                            const btnElevation = document.getElementById('tab-elevation');
+                            const btnPlan = document.getElementById('tab-plan');
+                            const btnSplit = document.getElementById('tab-split');
+                            if (btnElevation) btnElevation.classList.remove('active');
+                            if (btnPlan) btnPlan.classList.remove('active');
+                            if (btnSplit) btnSplit.classList.add('active');
+                        }
+                        
+                        calculateAndRender();
+                    });
+                    
+                    xTendonsG.appendChild(line);
+                }
+            }
+        });
+    } else {
+        // Fallback for spacing or positions mode (default Red)
+        state.planXTendons.forEach(y => {
+            if (y >= 0 && y <= totalWidth) {
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', mapX(0));
+                line.setAttribute('y1', mapY(y));
+                line.setAttribute('x2', mapX(totalLength));
+                line.setAttribute('y2', mapY(y));
+                line.setAttribute('stroke', '#ef4444');
+                line.setAttribute('stroke-width', '3');
+                line.setAttribute('opacity', '0.85');
+                xTendonsG.appendChild(line);
+            }
+        });
+    }
     svg.appendChild(xTendonsG);
     
     // 3. Render Y Tendons (Vertical Lines - Colored by Perpendicular Set)
@@ -5625,6 +6663,43 @@ function renderPlanVisualizer(svg) {
         columnsG.appendChild(text);
     });
     svg.appendChild(columnsG);
+
+    // 4.5. Render Corner Elevation Markers (BL, BR, TR, TL)
+    const cornersG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    const cornerDefs = [
+        { name: 'BL', x: 0, y: 0, dx: -8, dy: -6, align: 'end', val: state.zCornerBL },
+        { name: 'BR', x: totalLength, y: 0, dx: 8, dy: -6, align: 'start', val: state.zCornerBR },
+        { name: 'TR', x: totalLength, y: totalWidth, dx: 8, dy: 11, align: 'start', val: state.zCornerTR },
+        { name: 'TL', x: 0, y: totalWidth, dx: -8, dy: 11, align: 'end', val: state.zCornerTL }
+    ];
+
+    cornerDefs.forEach(c => {
+        const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        dot.setAttribute('cx', mapX(c.x));
+        dot.setAttribute('cy', mapY(c.y));
+        dot.setAttribute('r', '4.5');
+        dot.setAttribute('fill', '#a7f3d0');
+        dot.setAttribute('stroke', '#0f172a');
+        dot.setAttribute('stroke-width', '1.5');
+        cornersG.appendChild(dot);
+
+        const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        txt.setAttribute('x', mapX(c.x) + c.dx);
+        txt.setAttribute('y', mapY(c.y) + c.dy);
+        txt.setAttribute('fill', '#a7f3d0');
+        txt.setAttribute('font-size', '8px');
+        txt.setAttribute('font-family', 'Space Grotesk, sans-serif');
+        txt.setAttribute('font-weight', '700');
+        txt.setAttribute('text-anchor', c.align);
+        
+        let labelText = `${c.name} (${c.x.toFixed(1)}, ${c.y.toFixed(1)})`;
+        if (state.enableCornerElevations) {
+            labelText += `: ${c.val >= 0 ? '+' : ''}${c.val}mm`;
+        }
+        txt.textContent = labelText;
+        cornersG.appendChild(txt);
+    });
+    svg.appendChild(cornersG);
     
     // 5. Draw dimensions on plan view
     const dimsG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
@@ -5998,6 +7073,51 @@ const PARAM_HELP = {
             { name: 'Concrete Density', range: '20–26 kN/m³', desc: 'Used to compute self-weight load for balancing: w = density × h × width.' },
         ]
     },
+    'corner-elevations': {
+        title: 'Slab Corner Elevations (Bottom Z)',
+        diagram: `<svg viewBox="0 0 560 220" xmlns="http://www.w3.org/2000/svg">
+  <rect width="560" height="220" fill="#0f172a" rx="8"/>
+  <path d="M 120 70 L 400 50 L 460 140 L 180 170 Z" fill="rgba(51, 65, 85, 0.4)" stroke="#64748b" stroke-width="1.5" stroke-dasharray="2,2"/>
+  
+  <circle cx="180" cy="170" r="5" fill="#f472b6"/>
+  <text x="180" y="190" fill="#f472b6" font-size="11" font-family="Space Grotesk,sans-serif" font-weight="bold" text-anchor="middle">TL (0, W)</text>
+  
+  <circle cx="460" cy="140" r="5" fill="#f472b6"/>
+  <text x="475" y="150" fill="#f472b6" font-size="11" font-family="Space Grotesk,sans-serif" font-weight="bold" text-anchor="start">TR (L, W)</text>
+
+  <circle cx="400" cy="50" r="5" fill="#38bdf8"/>
+  <text x="400" y="38" fill="#38bdf8" font-size="11" font-family="Space Grotesk,sans-serif" font-weight="bold" text-anchor="middle">BR (L, 0)</text>
+
+  <circle cx="120" cy="70" r="5" fill="#38bdf8"/>
+  <text x="105" y="66" fill="#38bdf8" font-size="11" font-family="Space Grotesk,sans-serif" font-weight="bold" text-anchor="end">BL (0, 0)</text>
+
+  <path d="M 120 70 L 400 50 L 460 140 L 180 170 Z" fill="none" stroke="#a7f3d0" stroke-width="2"/>
+  
+  <line x1="120" y1="70" x2="120" y2="100" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#arr3)"/>
+  <text x="130" y="90" fill="#f59e0b" font-size="9" font-family="JetBrains Mono,monospace">z_BL</text>
+
+  <line x1="400" y1="50" x2="400" y2="70" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#arr3)"/>
+  <text x="410" y="65" fill="#f59e0b" font-size="9" font-family="JetBrains Mono,monospace">z_BR</text>
+
+  <line x1="460" y1="140" x2="460" y2="160" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#arr3)"/>
+  <text x="470" y="155" fill="#f59e0b" font-size="9" font-family="JetBrains Mono,monospace">z_TR</text>
+
+  <line x1="180" y1="170" x2="180" y2="200" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#arr3)"/>
+  <text x="190" y="190" fill="#f59e0b" font-size="9" font-family="JetBrains Mono,monospace">z_TL</text>
+
+  <defs>
+    <marker id="arr3" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L6,3 Z" fill="#f59e0b"/>
+    </marker>
+  </defs>
+</svg>`,
+        params: [
+            { name: 'BL (0,0)', range: '-1000 to +1000 mm', desc: 'Bottom slab Z elevation offset at the bottom-left corner of the slab (origin x=0, y=0).' },
+            { name: 'BR (L,0)', range: '-1000 to +1000 mm', desc: 'Bottom slab Z elevation offset at the bottom-right corner of the slab (x=total length L, y=0).' },
+            { name: 'TR (L,W)', range: '-1000 to +1000 mm', desc: 'Bottom slab Z elevation offset at the top-right corner of the slab (x=total length L, y=slab width W).' },
+            { name: 'TL (0,W)', range: '-1000 to +1000 mm', desc: 'Bottom slab Z elevation offset at the top-left corner of the slab (x=0, y=slab width W).' }
+        ]
+    },
     'concrete-cover': {
         title: 'Concrete Cover & Clearances',
         diagram: `<svg viewBox="0 0 560 200" xmlns="http://www.w3.org/2000/svg">
@@ -6102,6 +7222,107 @@ function showParamHelp(key) {
 
     body.innerHTML = html;
     modal.classList.remove('hidden');
+}
+
+// SVG Zoom & Pan Interactions
+function updateZoomOverlayVisibility() {
+    const profCtrl = document.querySelector('.profile-zoom-controls');
+    const planCtrl = document.querySelector('.plan-zoom-controls');
+    if (!profCtrl || !planCtrl) return;
+    
+    if (state.activeTab === 'elevation') {
+        profCtrl.style.display = 'flex';
+        planCtrl.style.display = 'none';
+    } else if (state.activeTab === 'plan') {
+        profCtrl.style.display = 'none';
+        planCtrl.style.display = 'flex';
+    } else if (state.activeTab === 'split') {
+        profCtrl.style.display = 'flex';
+        planCtrl.style.display = 'flex';
+    }
+}
+
+function setupSvgZoomPan(svgId, scaleKey, txKey, tyKey, suffix) {
+    const svg = document.getElementById(svgId);
+    if (!svg) return;
+    
+    let isPanning = false;
+    let startX = 0, startY = 0;
+    
+    const applyTransform = () => {
+        const scale = state[scaleKey];
+        const tx = state[txKey];
+        const ty = state[tyKey];
+        svg.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+        svg.style.transformOrigin = 'center center';
+    };
+    
+    svg.addEventListener('mousedown', (e) => {
+        // Only start pan if clicking background (not a handle or interactive tendon line)
+        const isHandle = e.target.classList.contains('svg-drag-node') || 
+                         e.target.tagName === 'circle' || 
+                         e.target.dataset.type ||
+                         e.target.classList.contains('svg-section-cut-overlay') ||
+                         e.target.classList.contains('plan-x-tendon-line');
+        if (isHandle) return;
+        
+        isPanning = true;
+        startX = e.clientX - state[txKey];
+        startY = e.clientY - state[tyKey];
+        svg.style.cursor = 'grabbing';
+        e.preventDefault();
+    });
+    
+    window.addEventListener('mousemove', (e) => {
+        if (!isPanning) return;
+        state[txKey] = e.clientX - startX;
+        state[tyKey] = e.clientY - startY;
+        applyTransform();
+    });
+    
+    window.addEventListener('mouseup', () => {
+        if (isPanning) {
+            isPanning = false;
+            svg.style.cursor = 'default';
+        }
+    });
+    
+    // Zoom In
+    const btnIn = document.getElementById(`btn-zoom-in-${suffix}`);
+    if (btnIn) {
+        btnIn.addEventListener('click', () => {
+            state[scaleKey] = Math.min(5.0, state[scaleKey] + 0.2);
+            applyTransform();
+        });
+    }
+    
+    // Zoom Out
+    const btnOut = document.getElementById(`btn-zoom-out-${suffix}`);
+    if (btnOut) {
+        btnOut.addEventListener('click', () => {
+            state[scaleKey] = Math.max(0.5, state[scaleKey] - 0.2);
+            applyTransform();
+        });
+    }
+    
+    // Reset Zoom
+    const btnReset = document.getElementById(`btn-zoom-reset-${suffix}`);
+    if (btnReset) {
+        btnReset.addEventListener('click', () => {
+            state[scaleKey] = 1.0;
+            state[txKey] = 0;
+            state[tyKey] = 0;
+            applyTransform();
+        });
+    }
+    
+    // Initial call to ensure transform style is clean
+    applyTransform();
+}
+
+function setupZoomPan() {
+    setupSvgZoomPan('profile-svg', 'profileScale', 'profileTransX', 'profileTransY', 'profile');
+    setupSvgZoomPan('plan-svg', 'planScale', 'planTransX', 'planTransY', 'plan');
 }
 
 // Start the Application

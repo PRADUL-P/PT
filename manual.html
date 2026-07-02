@@ -690,21 +690,27 @@
                 </a>
             </li>
             <li class="nav-item">
+                <a href="#view-controls">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                    8. View Controls
+                </a>
+            </li>
+            <li class="nav-item">
                 <a href="#autocad">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-                    8. AutoCAD Integration
+                    9. AutoCAD Integration
                 </a>
             </li>
             <li class="nav-item">
                 <a href="#use-cases">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                    9. Practical Use Cases
+                    10. Practical Use Cases
                 </a>
             </li>
             <li class="nav-item">
                 <a href="#revit-addin">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    10. Revit Add-in Guide
+                    11. Revit Add-in Guide
                 </a>
             </li>
         </ul>
@@ -833,6 +839,48 @@
                     </tr>
                 </tbody>
             </table>
+            <div style="margin-top: 2rem;">
+                <h3>Slab Corner Elevations (Bottom Z)</h3>
+                <p>When the PT slab is sloped or warped, you can specify individual Z-height offsets at the four corners of the concrete deck. These are bilinearly interpolated across the slab width and length. Enabling this dynamically wraps the 3D concrete mesh and offsets the elevation profiles of all longitudinal (X) and transverse (Y) tendons in 3D CAD exports.</p>
+                
+                <div class="diagram-container" style="margin-top: 1.5rem; margin-bottom: 1.5rem; text-align: center;">
+                    <svg viewBox="0 0 560 220" xmlns="http://www.w3.org/2000/svg" style="max-width: 480px; width: 100%; height: auto; border: 1px solid var(--border-color); border-radius: 8px; background: #0b1329;">
+                        <!-- Isometric slab -->
+                        <path d="M 120 70 L 400 50 L 460 140 L 180 170 Z" fill="rgba(56, 189, 248, 0.08)" stroke="rgba(100, 116, 139, 0.5)" stroke-width="1.5" stroke-dasharray="2,2"/>
+                        
+                        <circle cx="180" cy="170" r="5" fill="#f472b6"/>
+                        <text x="180" y="190" fill="#f472b6" font-size="10" font-family="'Space Grotesk',sans-serif" font-weight="bold" text-anchor="middle">TL (0, W)</text>
+                        
+                        <circle cx="460" cy="140" r="5" fill="#f472b6"/>
+                        <text x="475" y="146" fill="#f472b6" font-size="10" font-family="'Space Grotesk',sans-serif" font-weight="bold" text-anchor="start">TR (L, W)</text>
+
+                        <circle cx="400" cy="50" r="5" fill="#38bdf8"/>
+                        <text x="400" y="38" fill="#38bdf8" font-size="10" font-family="'Space Grotesk',sans-serif" font-weight="bold" text-anchor="middle">BR (L, 0)</text>
+
+                        <circle cx="120" cy="70" r="5" fill="#38bdf8"/>
+                        <text x="105" y="66" fill="#38bdf8" font-size="10" font-family="'Space Grotesk',sans-serif" font-weight="bold" text-anchor="end">BL (0, 0)</text>
+
+                        <path d="M 120 70 L 400 50 L 460 140 L 180 170 Z" fill="none" stroke="#a7f3d0" stroke-width="2"/>
+                        
+                        <line x1="120" y1="70" x2="120" y2="100" stroke="#f59e0b" stroke-width="1.5" />
+                        <polygon points="120,100 117,94 123,94" fill="#f59e0b" />
+                        <text x="130" y="90" fill="#f59e0b" font-size="9" font-family="JetBrains Mono,monospace">z_BL</text>
+
+                        <line x1="400" y1="50" x2="400" y2="70" stroke="#f59e0b" stroke-width="1.5" />
+                        <polygon points="400,70 397,64 403,64" fill="#f59e0b" />
+                        <text x="410" y="65" fill="#f59e0b" font-size="9" font-family="JetBrains Mono,monospace">z_BR</text>
+
+                        <line x1="460" y1="140" x2="460" y2="160" stroke="#f59e0b" stroke-width="1.5" />
+                        <polygon points="460,160 457,154 463,154" fill="#f59e0b" />
+                        <text x="470" y="155" fill="#f59e0b" font-size="9" font-family="JetBrains Mono,monospace">z_TR</text>
+
+                        <line x1="180" y1="170" x2="180" y2="200" stroke="#f59e0b" stroke-width="1.5" />
+                        <polygon points="180,200 177,194 183,194" fill="#f59e0b" />
+                        <text x="190" y="190" fill="#f59e0b" font-size="9" font-family="JetBrains Mono,monospace">z_TL</text>
+                    </svg>
+                    <div class="diagram-label">Figure 2.2: Slab corner locations BL, BR, TR, TL mapped to coordinates (x, y) with Z elevations.</div>
+                </div>
+            </div>
         </section>
 
 
@@ -1294,13 +1342,86 @@
                     <p>Table of coordinates defining where column rows intersect support lines. <strong>To change:</strong> These update dynamically based on the number of column rows and span lengths.</p>
                 </div>
             </div>
+
+            <h3>X-Tendon Sets &amp; Colour Coding</h3>
+            <p>When <strong>X-Tendon Sets</strong> mode is selected in the Plan Layout sidebar, each tendon set is drawn in a distinct colour (lime, purple, green, cyan, pink, orange, etc.) based on its set index. The colour coding is consistent between the Plan View and the Elevation Profile view, making it easy to identify which set you are editing. Clicking any X-tendon line in the plan view instantly selects that tendon set&rsquo;s elevation profile for editing — the section tabs above the visualizer automatically switch to the correct <em>Above Row N</em> or <em>Below Row N</em> tab. For the most efficient workflow, use <strong>Split View</strong> to see both the plan and the elevation profile side by side simultaneously so that profile changes are immediately visible as you click between sets.</p>
+
+            <div class="premium-alert">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                <div>
+                    <h4>Tip: Click-to-Edit in Plan View</h4>
+                    <p>While in X-Tendon Sets mode, a single click on any tendon line in the 2D Plan Layout instantly jumps the Elevation Profile view to that set&rsquo;s drape curve. If you are in Plan-only view, the interface automatically switches to Split View so you can see both panels at once.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section: View Controls & Navigation -->
+        <section id="view-controls" class="doc-section">
+            <h2>
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                8. View Controls &amp; Navigation
+            </h2>
+            <p>TendonFlow provides a set of interactive view controls that let you zoom, pan, and navigate between the Elevation Profile and 2D Plan Layout views without losing context. These controls are available in every view mode.</p>
+
+            <h3>Zoom Controls</h3>
+            <p>Floating zoom control buttons appear at the top-right corner of each view panel:</p>
+            <div class="cards-grid">
+                <div class="parameter-card">
+                    <h4>Zoom In <span class="range">+ button</span></h4>
+                    <p>Increases the zoom level of the active view by one step. Zoom range is <strong>0.5&times; to 5.0&times;</strong>. Available individually in Elevation Profile view, 2D Plan Layout view, and in each panel of Split View.</p>
+                </div>
+                <div class="parameter-card">
+                    <h4>Zoom Out <span class="range">&ndash; button</span></h4>
+                    <p>Decreases the zoom level of the active view by one step. Use this to get a wider overview of the full slab layout or multi-span tendon profile.</p>
+                </div>
+                <div class="parameter-card">
+                    <h4>Reset Zoom <span class="range">&#8634; button</span></h4>
+                    <p>Returns the view to the default 1:1 zoom level and resets the pan offset. Useful after navigating deep into a zoomed region.</p>
+                </div>
+                <div class="parameter-card">
+                    <h4>Pan (Drag-to-Pan)</h4>
+                    <p>Click and drag the background of any view panel to pan freely within the canvas. Works in all view modes at any zoom level.</p>
+                </div>
+            </div>
+
+            <h3>Split View</h3>
+            <p>The <strong>Split View</strong> tab displays the Elevation Profile and the 2D Plan Layout simultaneously, side by side. This is especially useful when editing tendon drape profiles while monitoring their plan positions. Each panel has its own independent zoom and pan controls, so you can zoom into a specific tendon in the plan without affecting the elevation profile scale.</p>
+
+            <div class="premium-alert">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                <div>
+                    <h4>Recommended Workflow: Split View + Click-to-Edit</h4>
+                    <p>For the fastest tendon editing experience, switch to <strong>Split View</strong> and activate <strong>X-Tendon Sets</strong> mode in the sidebar. You can then click any tendon in the plan (left panel) and its drape profile will immediately appear in the elevation view (right panel) — ready to edit with drag handles or numeric inputs.</p>
+                </div>
+            </div>
+
+            <h3>Tendon Colour Coding</h3>
+            <p>Colour coding is applied consistently across both views to make it easy to identify which tendon set you are working on:</p>
+            <div class="cards-grid">
+                <div class="parameter-card">
+                    <h4>Plan View Colours</h4>
+                    <p>In <strong>X-Tendon Sets</strong> mode, each set is drawn in a unique colour (lime, purple, green, cyan, pink, orange, etc.) based on its set index. In spacing or positions modes, tendons remain red as before.</p>
+                </div>
+                <div class="parameter-card">
+                    <h4>Elevation Profile Colours</h4>
+                    <p>The active (selected) tendon profile curve is coloured using the same set colour as shown in the plan view. Ghost profiles of other sets are drawn at low opacity with dashed lines, each in their own set colour. The legend in the top bar shows the active set colour labelled <em>Active Tendon</em>.</p>
+                </div>
+                <div class="parameter-card">
+                    <h4>Cover Violation Override</h4>
+                    <p>If a concrete cover violation is detected anywhere along a tendon profile, that profile is highlighted in <strong style="color: #ef4444;">red</strong> regardless of its assigned set colour — ensuring violations are always clearly visible.</p>
+                </div>
+                <div class="parameter-card">
+                    <h4>End Slope Angle Locking</h4>
+                    <p>Support exit angles can be locked to a specific value. When locked, the angle indicator shows <strong style="color: #10b981;">green</strong> if the angle is within the allowed range, or <strong style="color: #ef4444;">red</strong> if it is outside. When unlocked, the current natural drape angle is displayed.</p>
+                </div>
+            </div>
         </section>
 
         <!-- Section: AutoCAD Integration -->
         <section id="autocad" class="doc-section">
             <h2>
                 <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-                8. AutoCAD Integration & Commands
+                9. AutoCAD Integration & Commands
             </h2>
             <p>TendonFlow allows exporting slab layouts and tendon geometries directly to AutoCAD. Make sure you load the loader file once using <code>APPLOAD</code> inside AutoCAD, then copy or download files and run the commands:</p>
 
@@ -1381,13 +1502,59 @@
                 </tbody>
             </table>
 
+            <h3>3D Solid DXF Export &amp; Per-Set Coloured Layers</h3>
+            <p>The <strong>3D solid DXF export</strong> writes each tendon set to its own named AutoCAD layer with a distinct AutoCAD Color Index (ACI) that matches the set colours shown in the web UI. This allows you to toggle individual tendon set layers on and off, or apply by-layer rendering colours in AutoCAD, BricsCAD, and Revit link workflows.</p>
+
+            <table class="doc-table">
+                <thead>
+                    <tr>
+                        <th>Layer Name</th>
+                        <th>Contents</th>
+                        <th>Colour (ACI)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="font-family: monospace; color: var(--color-primary-light);">TF_3D_SLAB</td>
+                        <td>3D solid slab geometry</td>
+                        <td>White (7)</td>
+                    </tr>
+                    <tr>
+                        <td style="font-family: monospace; color: var(--color-primary-light);">TF_3D_XTENDON_SET1</td>
+                        <td>X-direction tendon set 1 solid geometry</td>
+                        <td>Lime (83)</td>
+                    </tr>
+                    <tr>
+                        <td style="font-family: monospace; color: var(--color-primary-light);">TF_3D_XTENDON_SET2</td>
+                        <td>X-direction tendon set 2 solid geometry</td>
+                        <td>Magenta (6)</td>
+                    </tr>
+                    <tr>
+                        <td style="font-family: monospace; color: var(--color-primary-light);">TF_3D_XTENDON_SET<em>N</em></td>
+                        <td>X-direction tendon set <em>N</em> solid geometry</td>
+                        <td>Colour matching set index</td>
+                    </tr>
+                    <tr>
+                        <td style="font-family: monospace; color: var(--color-primary-light);">TF_3D_YTENDON_SET1</td>
+                        <td>Y-direction tendon set 1 solid geometry</td>
+                        <td>Cyan (4)</td>
+                    </tr>
+                    <tr>
+                        <td style="font-family: monospace; color: var(--color-primary-light);">TF_3D_YTENDON_SET<em>N</em></td>
+                        <td>Y-direction tendon set <em>N</em> solid geometry</td>
+                        <td>Colour matching set index</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p>The 3D export also correctly uses each tendon&rsquo;s own <em>above</em> or <em>below</em> section profile when computing the drape path — earlier versions always used the &lsquo;above&rsquo; profile for all tendons. Corner slab elevations (BL, BR, TR, TL Z-offsets) are also accounted for when computing tendon Z coordinates in the export, ensuring correct placement in sloped or warped slab configurations.</p>
+
         </section>
 
         <!-- Section: Use Cases -->
         <section id="use-cases" class="doc-section">
             <h2>
                 <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                9. Practical Use Cases & Workflows
+                10. Practical Use Cases & Workflows
             </h2>
             
             <h3>Use Case 1: Balancing Upward Load Pressures</h3>
@@ -1412,7 +1579,7 @@
         
         <section id="revit-addin" class="doc-section">
             <h2>
-                <span class="sect-num">10.</span>
+                <span class="sect-num">11.</span>
                 Revit Add-in Guide & Installation
             </h2>
             <p>TendonFlow includes a robust pyRevit extension to bridge your web designs directly into 3D Revit models. This section outlines how to install the extension and run the direct and batch workflows.</p>
